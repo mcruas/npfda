@@ -4,7 +4,7 @@ oldpar <- par(no.readonly = TRUE)
 data(zyields)
 x <- zyields
 
-maturities <- c(3/12,6/12,9/12,1:12)
+maturities <- c(3/12,6/12,9/12,1:12,15)
 yields <- as.matrix(x[,3:ncol(x)])
 dates <- as.Date(x[,1],format="%d.%m.%Y")
 
@@ -48,6 +48,7 @@ colnames(allgof) <- c("Diebold/Li", "Nelson/Siegel", "Svensson", "Adj. Svensson"
 print(allgof)
 
 par(oldpar)
+blaj <- 200 + 3
 
 hist(rnorm(2000))
 
