@@ -941,7 +941,8 @@ PreparaCurvasCorte  <- function(base,percentual.testar,intervalo,s,maturidade,to
   curvas$futuro.learn <- as.matrix(base[learning[1]:learning[2]+s,maturidade] - retirar[learning[1]:learning[2]])
   curvas$estimacao  <- NULL
   curvas$tipo  <- "corte"
-
+  class(curvas) <- "metodo.corte"
+  
   return(curvas)
   
 }
@@ -1049,7 +1050,9 @@ PreparaValorFuturo  <-function (base,percentual.testar,truncar,s,maturidade) {
   
   return(valores.reais)
 }
- 
+
+
+
 
 SemimetricPCA <- function(DATA1, DATA2, q){
   ###############################################################
