@@ -51,7 +51,7 @@ DieboldLi.EstimaBetas <- function (maturidades, taxas.juro, datas, lambda) {
 }
 
 
-DieboldLi.PreveBetas <- function(betas, intervalo.passado, intervalo.futuro, horizonte) {
+DieboldLi.PreveBetas <- function(betas, intervalo.passado, intervalo.futuro) {
   ############################################################
   # Utiliza 
   # ARGS
@@ -69,14 +69,13 @@ DieboldLi.PreveBetas <- function(betas, intervalo.passado, intervalo.futuro, hor
   # estima previsões para cada beta
   betas.previstos <- matrix(data=0,nrow=(intervalo.futuro[2]-
                               intervalo.futuro[1]+1),ncol=3)
-  
+  horizonte  <- intervalo.futuro[1] - intervalo.passado[2]
   for (i in intervalo.futuro[1]:intervalo.futuro[2]) {
     
     # betas.arima é uma lista com o arima aplicado para cada um dos betas.
     # O beta de h passos à frente é obtido através de um AR(1)
     betas.arima <- apply(betas[intervalo.passado[1]:(i - horizonte), ],
-                         2,arima,order=c(1,0,0),optim.control
-                         = list(maxit = 1000))
+                         2,auto.arima)
     betas.previstos[i - intervalo.futuro[1] + 1, ] <- 
                     sapply(lapply(betas.arima,forecast, h=horizonte),
                                   function(lst) lst$mean[horizonte])
@@ -815,25 +814,25 @@ FunopareKnnLcv <- function(Response, CURVES, PRED, kind.of.kernel = "quadratic",
 #   str(df)
 # }
 
-IntervaloFuturo <- function(intervalo,percentual.testar,horizonte) {
+IntervaloFuturo <- function(intervalo,percentual.testar) {
   #############################################################
   # ARGS
   #   intervalo: vetor tipo c(x,y)
   #   percentual.testar: um número entre 0 e 1
   # RETORNO
   #   um vetor c(z,y), em que z é o primeiro valor que será previsto  
-  #   Ex: IntervaloFuturo(c(1001,2000),0.8,h) retorna c(1801+h,2000)
+  #   Ex: IntervaloFuturo(c(1001,2000),0.8,h) retorna c(1801,2000)
   #############################################################
   
   tamanho.serie.temporal  = intervalo[2]-intervalo[1]+1
   output <- c(trunc((1-percentual.testar)*tamanho.serie.temporal
-                              ) + intervalo[1]-1 + horizonte, tamanho.serie.temporal + 
+                              ) + intervalo[1]-1, tamanho.serie.temporal + 
                                intervalo[1] - 1)
   return(output)
 }
 
 
-IntervaloPassado <- function(intervalo,percentual.testar) {
+IntervaloPassado <- function(intervalo,percentual.testar, horizonte) {
 #############################################################
 # ARGS
 #   intervalo: vetor tipo c(x,y)
@@ -841,11 +840,11 @@ IntervaloPassado <- function(intervalo,percentual.testar) {
 # RETORNO
 #   um vetor c(x,z), em que z corresponde ao (1-percentual.testar)
 #   do intervalo inicial. 
-#   Ex: Intervalo.base.previsao(c(1001,2000),0.8) retorna c(1001,1800)
+#   Ex: Intervalo.base.previsao(c(1001,2000),0.8) retorna c(1001,1800-h)
 #############################################################
   output <- intervalo
   output[2] <- trunc((intervalo[2]-intervalo[1]+1)*
-                    (1-percentual.testar) + intervalo[1] - 1)
+                    (1-percentual.testar) + intervalo[1] - 1 - horizonte)
   return(output)
 }
 
