@@ -814,25 +814,25 @@ FunopareKnnLcv <- function(Response, CURVES, PRED, kind.of.kernel = "quadratic",
 #   str(df)
 # }
 
-IntervaloFuturo <- function(intervalo,percentual.testar) {
+IntervaloFuturo <- function(intervalo,percentual.testar, horizonte) {
   #############################################################
   # ARGS
   #   intervalo: vetor tipo c(x,y)
   #   percentual.testar: um número entre 0 e 1
   # RETORNO
   #   um vetor c(z,y), em que z é o primeiro valor que será previsto  
-  #   Ex: IntervaloFuturo(c(1001,2000),0.8,h) retorna c(1801,2000)
+  #   Ex: IntervaloFuturo(c(1001,2000),0.8,h) retorna c(1801 + h,2000)
   #############################################################
   
   tamanho.serie.temporal  = intervalo[2]-intervalo[1]+1
   output <- c(trunc((1-percentual.testar)*tamanho.serie.temporal
-                              ) + intervalo[1]-1, tamanho.serie.temporal + 
+                              ) + intervalo[1]-1 + horizonte, tamanho.serie.temporal + 
                                intervalo[1] - 1)
   return(output)
 }
 
 
-IntervaloPassado <- function(intervalo,percentual.testar, horizonte) {
+IntervaloPassado <- function(intervalo,percentual.testar) {
 #############################################################
 # ARGS
 #   intervalo: vetor tipo c(x,y)
@@ -840,11 +840,11 @@ IntervaloPassado <- function(intervalo,percentual.testar, horizonte) {
 # RETORNO
 #   um vetor c(x,z), em que z corresponde ao (1-percentual.testar)
 #   do intervalo inicial. 
-#   Ex: Intervalo.base.previsao(c(1001,2000),0.8) retorna c(1001,1800-h)
+#   Ex: Intervalo.base.previsao(c(1001,2000),0.8) retorna c(1001,1800)
 #############################################################
   output <- intervalo
   output[2] <- trunc((intervalo[2]-intervalo[1]+1)*
-                    (1-percentual.testar) + intervalo[1] - 1 - horizonte)
+                    (1-percentual.testar) + intervalo[1] - 1)
   return(output)
 }
 
