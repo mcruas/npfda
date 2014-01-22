@@ -75,7 +75,8 @@ DieboldLi.PreveBetas <- function(betas, intervalo.passado, intervalo.futuro, hor
     # betas.arima é uma lista com o arima aplicado para cada um dos betas.
     # O beta de h passos à frente é obtido através de um AR(1)
     betas.arima <- apply(betas[intervalo.passado[1]:(i - horizonte), ],
-                         2,arima,order=c(1,0,0),optim.control = list(maxit = 1000))
+                         2,arima,order=c(1,0,0),optim.control
+                         = list(maxit = 1000))
     betas.previstos[i - intervalo.futuro[1] + 1, ] <- 
                     sapply(lapply(betas.arima,forecast, h=horizonte),
                                   function(lst) lst$mean[horizonte])
@@ -821,7 +822,7 @@ IntervaloFuturo <- function(intervalo,percentual.testar,horizonte) {
   #   percentual.testar: um número entre 0 e 1
   # RETORNO
   #   um vetor c(z,y), em que z é o primeiro valor que será previsto  
-  #   Ex: Intervalo.base.previsao(c(1001,2000),0.8) retorna c(1001,1800)
+  #   Ex: IntervaloFuturo(c(1001,2000),0.8,h) retorna c(1801+h,2000)
   #############################################################
   
   tamanho.serie.temporal  = intervalo[2]-intervalo[1]+1
@@ -851,13 +852,14 @@ IntervaloPassado <- function(intervalo,percentual.testar) {
 # Multiplot.ts(matrix(rep(1:20,each=20),nrow=20))
 
 Multiplot.ts <- function(data, ... , range){
+############################################################
 # This function plots many time series in the same graph
 #
 # ARGS  
 #    Data is a matrix with each serie in its lines
 #    Range is an optional vector with the indexes of the time series
 #       to be exibited. If it is absent, then every line is ploted
-  
+############################################################
   if (missing(range)) 
     range <- 1:dim(data)[2]
   size.series <- dim(data)[2]
@@ -893,11 +895,12 @@ Multiplotdiv.ts <- function(data, div){
 }
 
 py.range <- function(range){
-  # implements python function range, but starting on 0 instead of
+  # implements python function range, but starting on 1 instead of 0
   return(range[1]:range[2])
 }
 
-PreparaCurvasCorte  <- function(base,percentual.testar,intervalo,s,maturidade,todas.maturidades,retirar = NULL) {
+PreparaCurvasCorte  <- function(base,percentual.testar,intervalo,s,maturidade,todas.maturidades = NULL,retirar = NULL) {
+########################################################################
 # Essa função retorna uma variável com as curvas necessárias para fazer a estimação.
 # 
 # ARGS
@@ -909,30 +912,26 @@ PreparaCurvasCorte  <- function(base,percentual.testar,intervalo,s,maturidade,to
 #   maturidade: índice da maturidade que se deseja prever
 #   todas.maturidades: indica as maturidades que se quer utilizar para compor as curvas
 #   retirar: vetor com as quantidades que devem ser retiradas do valor base para
-#               cálculo da semimétrica
-#   
+#               cálculo da semimétrica (o índice dos intervalos de retirar deve
+#               ser os mesmos da base)
+#####################################################################################
+  if(missing(retirar))
+    retirar <- rep(0,dim(base)[1])
+  if(missing(todas.maturidades))
+    todas.maturidades <- 1:dim(base)[2]
   if ((dim(base)[2]) < max(todas.maturidades) ||  min(todas.maturidades) < 1)  
-    stop("Você forneceu um conjunto inválido de maturidades na variável todas.maturidades")
-  
+    stop("Você forneceu um conjunto inválido de maturidades na variável todas.maturidades")  
   if (intervalo[1] < 1 || intervalo[2] > dim(base)[1])
     stop("o intervalo para truncar a série temporal é inválido")
-  
   if (0 >= percentual.testar || percentual.testar >= 1)
     stop("O percentual de teste fornecido é inválido")
-    
   tamanho.serie.temporal  = intervalo[2] - intervalo[1] + 1  
   #learning[1] contém o indice da primeira curva para aprendizado e learning[2] o índice da última
   learning <- c(1,trunc((1-percentual.testar)*tamanho.serie.temporal)-s) + intervalo[1] - 1
-  
   #testing é igual ao learning, mas para as curvas usadas para previsão
   testing <- c(trunc((1-percentual.testar)*tamanho.serie.temporal),tamanho.serie.temporal-s) + intervalo[1] - 1
-  
   if(learning[1] >= learning[2] || testing[1] >= testing[2])
-    stop("Você forneceu um valor inválido de horizonte de previsão")
-  
-  if(missing(retirar))
-    retirar <- rep(0,dim(base)[1])
-  
+    stop("Você forneceu um valor inválido de horizonte de previsão")  
   curvas <- NULL
   curvas$retirar.learn <- retirar[learning[1]:learning[2]]
   curvas$retirar.test <- retirar[testing[1]:testing[2]]
@@ -941,10 +940,37 @@ PreparaCurvasCorte  <- function(base,percentual.testar,intervalo,s,maturidade,to
   curvas$futuro.learn <- as.matrix(base[learning[1]:learning[2]+s,maturidade] - retirar[learning[1]:learning[2]])
   curvas$estimacao  <- NULL
   curvas$tipo  <- "corte"
-  class(curvas) <- "metodo.corte"
-  
+  class(curvas) <- "fdaCorte"
   return(curvas)
-  
+}
+
+
+predict.fdaCorte <- function(object, semimetricas, n.vizinhos = NULL) {
+###########################################################################
+# Função que faz previsões para objetos da classe fdaCorte
+# ARGS
+#   object: um objeto da classe fda.Corte
+#   n.vizinhos: valor opcional para determinar ou não a quantidade de vizinhos
+#                            mais próximos para se fazer a estimação
+# RETORNA
+#   vetor com os valores futuros previstos
+#############################################################################
+  if(class(semimetricas) != "semimetricas")
+    stop("Você não forneceu curvas de semimétrica válidas")
+  semimetrica1 = semimetricas[[1]]; semimetrica2 = semimetricas[[2]]
+  if (missing(n.vizinhos)){
+    estimacao  <- FunopareKnnGcv(Response=curvas$futuro.learn,CURVES=curvas$passado.learn,
+                              PRED=curvas$passado.test,kind.of.kernel="quadratic",
+                              SEMIMETRIC1=semimetrica1,SEMIMETRIC2=semimetrica2)$Predicted.values +
+                  curvas$retirar.test
+  } else {
+    estimacao  <- FunopareKnn(Response=curvas$futuro.learn,CURVES=curvas$passado.learn,
+                              PRED=curvas$passado.test,neighbour=n.vizinhos,
+                              kind.of.kernel="quadratic", SEMIMETRIC1=semimetrica1,
+                              SEMIMETRIC2=semimetrica2)$Predicted.values + 
+                  curvas$retirar.test
+  }
+  return(estimacao)
 }
 
 
@@ -1031,30 +1057,61 @@ PreparaCurvasPasso  <- function(base,percentual.testar,truncar,s,maturidade,
 PreparaValorFuturo  <-function (base,percentual.testar,truncar,s,maturidade) {
 # Esta função retorna os valores verdadeiros, para comparar aos valores
 # estimados pelos procedimentos
-
   if (truncar[1] < 1 || truncar[2] > dim(base)[1])
     stop("o intervalo para truncar a série temporal é inválido")
-  
   if (0 >= percentual.testar || percentual.testar >= 1)
     stop("O percentual de teste fornecido é inválido")
-   
   tamanho.serie.temporal  = truncar[2]-truncar[1]+1
-  
   #testing é igual ao learning, mas para as curvas usadas para previsão
-  testing <- c(trunc((1-percentual.testar)*tamanho.serie.temporal) + truncar[1]-1,tamanho.serie.temporal - s + truncar[1] - 1)
-  
+  testing <- c(trunc((1-percentual.testar)*tamanho.serie.temporal) + 
+                 truncar[1]-1,tamanho.serie.temporal - s + truncar[1] - 1)
   if(testing[1] >= testing[2])
-    stop("Você forneceu um valor inválido de horizonte de previsão")
-  
+    stop("Você forneceu um valor inválido de horizonte de previsão")  
   valores.reais <- base[testing[1]:testing[2]+s,maturidade] 
-  
   return(valores.reais)
 }
 
 
+SemimetricasClasse <- function(curvas, ..., tipo = "pca") {
+################################################################  
+# Prepara um objeto da classe "semimetricas", para ser usado para previsão
+# ARGS
+#    curvas: um objeto do tipo curvas
+#    tipo: o tipo das semimetricas - "pca" (default) ou "deriv"
+#     ... : argumentos restantes para o cálculo das semimétricas
+#       - pca: q: número de componentes principais. 
+#                 valores default: q = 5
+#       - deriv:  q: ordem da derivação
+#                 nknot: número de nós para cálculo do spline 
+#                 range.grid: vetor de tamanho 2 contendo o intervalo
+#                             no qual as curvas serão discretizadas
+#                 valores default: q = 0, nknot = 5, range.grid = c(0,10)
+# RETORNA
+#   uma lista com duas matrizes:
+#   semimetrica1: matriz contendo as distâncias entre cada duas curvas de treino
+#   semimetrica2: matriz contendo as distâncias entre cada curva de teste com
+#                           cada curva de treino
+################################################################  
+  if (tipo == "pca"){
+    semimetrica1 <- SemimetricPCA(curvas$passado.learn,
+                                  curvas$passado.learn, ...)
+    semimetrica2 <- SemimetricPCA(curvas$passado.learn,
+                                  curvas$passado.test, ...)  
+  } else {
+    if (tipo != "deriv") 
+      stop("Você forneceu um tipo inválido de semimétrica")
+    semimetrica1 <- SemimetricDeriv(curvas$passado.learn,
+                                    curvas$passado.learn, ...)
+    semimetrica2 <- SemimetricDeriv(curvas$passado.learn,
+                                    curvas$passado.test, ...)  
+  }
+  semimetricas <- list(semimetrica1,semimetrica2)
+  class(semimetricas) <- "semimetricas"
+  return(semimetricas)
+}
 
 
-SemimetricPCA <- function(DATA1, DATA2, q){
+SemimetricPCA <- function(DATA1, DATA2, q = 5){
   ###############################################################
   # Computes between curves a pca-type semimetric based on the
   # functional principal components analysis method.
@@ -1090,7 +1147,7 @@ SemimetricPCA <- function(DATA1, DATA2, q){
 }
 
 
-SemimetricDeriv <- function(DATA1, DATA2, q, nknot, range.grid){
+SemimetricDeriv <- function(DATA1, DATA2, q = 0, nknot = 5, range.grid = c(0,10)){
   ###############################################################
   # Computes a semimetric between curves based on their derivatives.
   #    "DATA1" matrix containing a first set of curves stored row by row
@@ -1136,7 +1193,7 @@ SemimetricDeriv <- function(DATA1, DATA2, q, nknot, range.grid){
   coef.mat1 <- symsolve(Cmat, Dmat1)
   #######################################################################
   # Numerical integration by the Gauss method :
-  # -------------------------------------------
+  # -------------1------------------------------
   # The objects ending by "gauss" allow us to compute numerically  
   # integrals by means the "Gauss method" (lx.gauss=6 ==> the computation 
   # of the integral is exact for polynom of degree less or equal to 11).
