@@ -10,24 +10,27 @@ library("stringr")
 DiretorioResultados  <- function() setwd("~/Dropbox/R/NPFDA/Resultados")
 DiretorioPrincipal <-  function() setwd("~/Dropbox/R/NPFDA")
 
-AtualizaVariaveis <- function(){
-  ## para funopare
-  Response=curvas$futuro.learn
-  CURVES=curvas$passado.learn
-  PRED=curvas$passado.test
-  SEMIMETRIC1=semimetrica1
-  SEMIMETRIC2=semimetrica2
-  kind.of.kernel = "quadratic"
-  
-  ## para a semimétrica
-  DATA1 <- CURVES
-  DATA2 <- CURVES
-  q = 0
-  nknot = 3
-  range.grid = c(0,20)
-  #  SEMIMETRIC1 <- semimetric.deriv(CURVES, CURVES,q=0,nknot=3,range.grid=c(0,1))
-  
+Ar.Previsao <- function(ts, intervalo.passado, intervalo.futuro, grau.arima = c(1,0,0)) {
+#########################################################
+# Realiza previsões para o intervalo futuro. O horizonte é definido pela
+# diferença entre os intervalos e o modelo é um AR(1) por default
+# ARGS
+#   ts: a série temporal para prever
+#   intervalo.passado: vetor de tamanho 2 com o início e fim do intervalo de treino
+#   intervalo.futuro: vetor de tamanho 2 com o início e fim do intervalo para previsão
+#   grau.arima: vetor de ordem 3 que especifica os graus do modelo arima c(p,i,q)
+# RETORNA
+# Um vetor com as previsões
+#########################################################
+  previstos <- rep(0,times=intervalo.futuro[2] - intervalo.futuro[1]+1)
+  horizonte  <- intervalo.futuro[1] - intervalo.passado[2]
+  for (i in intervalo.futuro[1]:intervalo.futuro[2]) {
+    estimacao.arima <- arima(ts[intervalo.passado[1]:(i - horizonte)],order=grau.arima)
+    previstos[i - intervalo.futuro[1] + 1] <- forecast(estimacao.arima,h=horizonte)$mean[horizonte]
+  }
+  return(previstos)
 }
+
 
 DieboldLi.EstimaBetas <- function (maturidades, taxas.juro, datas, lambda) {
 #################################################################
@@ -944,13 +947,16 @@ PreparaCurvasCorte  <- function(base,percentual.testar,intervalo,s,maturidade,to
 }
 
 
-predict.fdaCorte <- function(object, semimetricas, n.vizinhos = NULL) {
+predict.fdaCorte <- function(object, semimetricas, n.vizinhos = NULL, cv = "GCV") {
 ###########################################################################
 # Função que faz previsões para objetos da classe fdaCorte
 # ARGS
 #   object: um objeto da classe fda.Corte
 #   n.vizinhos: valor opcional para determinar ou não a quantidade de vizinhos
 #                            mais próximos para se fazer a estimação
+#   cv: como é feito cross-validation para determinar o número de vizinhos ótimo knn.
+#             aceita dois tipos:  "GCV" (default) - cross-validation global
+#                                 "LCV"- cross-validation local
 # RETORNA
 #   vetor com os valores futuros previstos
 #############################################################################
@@ -958,10 +964,19 @@ predict.fdaCorte <- function(object, semimetricas, n.vizinhos = NULL) {
     stop("Você não forneceu curvas de semimétrica válidas")
   semimetrica1 = semimetricas[[1]]; semimetrica2 = semimetricas[[2]]
   if (missing(n.vizinhos)){
-    estimacao  <- FunopareKnnGcv(Response=curvas$futuro.learn,CURVES=curvas$passado.learn,
-                              PRED=curvas$passado.test,kind.of.kernel="quadratic",
-                              SEMIMETRIC1=semimetrica1,SEMIMETRIC2=semimetrica2)$Predicted.values +
-                  curvas$retirar.test
+    if (cv == "GCV") {
+      estimacao  <- FunopareKnnGcv(Response=curvas$futuro.learn,CURVES=curvas$passado.learn,
+                                PRED=curvas$passado.test,kind.of.kernel="quadratic",
+                                SEMIMETRIC1=semimetrica1,SEMIMETRIC2=semimetrica2)$Predicted.values +
+                    curvas$retirar.test
+    } else {
+      if (cv != "LCV")
+        stop("O tipo de cross-validation fornecido é inválido")
+      estimacao  <- FunopareKnnLcv(Response=curvas$futuro.learn,CURVES=curvas$passado.learn,
+                                   PRED=curvas$passado.test,kind.of.kernel="quadratic",
+                                   SEMIMETRIC1=semimetrica1,SEMIMETRIC2=semimetrica2)$Predicted.values +
+        curvas$retirar.test
+    }
   } else {
     estimacao  <- FunopareKnn(Response=curvas$futuro.learn,CURVES=curvas$passado.learn,
                               PRED=curvas$passado.test,neighbour=n.vizinhos,
