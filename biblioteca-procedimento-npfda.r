@@ -32,6 +32,29 @@ Ar.Previsao <- function(ts, intervalo.passado, intervalo.futuro, grau.arima = c(
 }
 
 
+Arima.Previsao <- function(ts, intervalo.passado, intervalo.futuro) {
+  #########################################################
+  # Realiza previsões para o intervalo futuro. O horizonte é definido pela
+  # diferença entre os intervalos e o modelo é um ARIMA cujos graus são 
+  # determinados automaticamente.
+  # ARGS
+  #   ts: a série temporal para prever
+  #   intervalo.passado: vetor de tamanho 2 com o início e fim do intervalo de treino
+  #   intervalo.futuro: vetor de tamanho 2 com o início e fim do intervalo para previsão
+  # RETORNA
+  # Um vetor com as previsões
+  #########################################################
+  previstos <- rep(0,times=intervalo.futuro[2] - intervalo.futuro[1]+1)
+  horizonte  <- intervalo.futuro[1] - intervalo.passado[2]
+  for (i in intervalo.futuro[1]:intervalo.futuro[2]) {
+    estimacao.arima <- auto.arima(ts[intervalo.passado[1]:(i - horizonte)])
+    previstos[i - intervalo.futuro[1] + 1] <- forecast(estimacao.arima,h=horizonte)$mean[horizonte]
+  }
+  return(previstos)
+}
+
+
+
 DieboldLi.EstimaBetas <- function (maturidades, taxas.juro, datas, lambda) {
 #################################################################
 # Esta função estima os valores de beta para uma dada maturidade, taxa de
