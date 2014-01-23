@@ -149,39 +149,39 @@ for (j in 1:length(intervalos)) {
 
 save(simulacoes,file=paste0(dir,"simulacoes"))
 
-
 PlotarMetodo <- function(arquivo,intervalo,horizonte,metodo,parametro) {
   Plot.list(simulacoes[[nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]])
   for (i in simulacoes[[nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]]) 
 }
 
-PlotarExperimento <- function(arquivo,intervalo,maturidade,horizonte) {
-
-  eqm <- array(0,dim=c(length(intervalos),5))
-  dimnames(eqm) <- list(intervalos,c("diebold-li","rw","arima","corte.deriv","corte.pca"))
-  
-  for (i in 1:length(intervalos)) {
-    intervalo <- intervalos[i]
-    Plot.list(arquivo[[nome.vetor(intervalo)]][[as.character(horizonte)]][[as.character(maturidade)]])
-    title(nome.vetor(intervalo))
-    taxas.diebold <- simulacoes[[nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["diebold"]][["0.5"]]
-    taxas.rw <- simulacoes[[nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["rw"]][["1"]]
-    taxas.ar <- simulacoes[[nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["ar"]][["1"]]
-    taxas.corte.deriv <- simulacoes[[nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["corte.deriv"]][["1"]]
-    taxas.corte.pca <- simulacoes[[nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["corte.pca"]][["5"]]
-    valores.reais <- arquivo[[nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["valores reais"]][["0"]]    
-    eqm[i,1] <- EQM(valores.reais,taxas.diebold); eqm[i,2] <- EQM(valores.reais,taxas.rw)
-    eqm[i,3] <- EQM(valores.reais,taxas.ar);eqm[i,4] <- EQM(valores.reais, taxas.corte.deriv)
-    eqm[i,5] <- EQM(valores.reais, taxas.corte.pca)    
-  }  
-    print(eqm)
-}
+# PlotarExperimento <- function(arquivo,intervalo,maturidade,horizonte) {
+# 
+#   eqm <- array(0,dim=c(length(intervalos),5))
+#   dimnames(eqm) <- list(intervalos,c("diebold-li","rw","arima","corte.deriv","corte.pca"))
+#   
+#   for (i in 1:length(intervalos)) {
+#     intervalo <- intervalos[i]
+#     Plot.list(arquivo[[nome.vetor(intervalo)]][[as.character(horizonte)]][[as.character(maturidade)]])
+#     title(nome.vetor(intervalo))
+#     taxas.diebold <- simulacoes[[nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["diebold"]][["0.5"]]
+#     taxas.rw <- simulacoes[[nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["rw"]][["1"]]
+#     taxas.ar <- simulacoes[[nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["ar"]][["1"]]
+#     taxas.corte.deriv <- simulacoes[[nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["corte.deriv"]][["1"]]
+#     taxas.corte.pca <- simulacoes[[nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["corte.pca"]][["5"]]
+#     valores.reais <- arquivo[[nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["valores reais"]][["0"]]    
+#     eqm[i,1] <- EQM(valores.reais,taxas.diebold); eqm[i,2] <- EQM(valores.reais,taxas.rw)
+#     eqm[i,3] <- EQM(valores.reais,taxas.ar);eqm[i,4] <- EQM(valores.reais, taxas.corte.deriv)
+#     eqm[i,5] <- EQM(valores.reais, taxas.corte.pca)    
+#   }  
+#     print(eqm)
+# }
 
 
 PlotarExperimento <- function(arquivo,maturidade,horizonte,intervalos) {
   
-  eqm <- array(0,dim=c(length(intervalos),5))
-  dimnames(eqm) <- list(intervalos,c("diebold-li","rw","arima","corte.deriv","corte.pca"))
+  metodos <- c("diebold-li","rw","arima","corte.deriv","corte.pca","combinado")
+  eqm <- array(0,dim=c(length(intervalos),length(metodos)))
+  dimnames(eqm) <- list(intervalos,metodos)
   
   for (i in 1:length(intervalos)) {
     intervalo.total <- intervalos[[i]]
@@ -192,15 +192,23 @@ PlotarExperimento <- function(arquivo,maturidade,horizonte,intervalos) {
     taxas.ar <- simulacoes[[nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["ar"]][["1"]]
     taxas.corte.deriv <- simulacoes[[nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["corte.deriv"]][["1"]]
     taxas.corte.pca <- simulacoes[[nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["corte.pca"]][["5"]]
+    taxas.combinado <- (taxas.corte.pca + taxas.corte.deriv)/2
+    lines.ts(taxas.combinado, col = 7)
     valores.reais <- arquivo[[nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["valores reais"]][["0"]]    
     eqm[i,1] <- EQM(valores.reais,taxas.diebold); eqm[i,2] <- EQM(valores.reais,taxas.rw)
     eqm[i,3] <- EQM(valores.reais,taxas.ar);eqm[i,4] <- EQM(valores.reais, taxas.corte.deriv)
-    eqm[i,5] <- EQM(valores.reais, taxas.corte.pca)    
+    eqm[i,5] <- EQM(valores.reais, taxas.corte.pca);eqm[i,6] <- EQM(valores.reais, taxas.combinado)
   }  
   print(eqm)
 }
 
+curvas <- PreparaCurvasCorte(taxas.juro,percentual.testar,intervalo=c(1,2500),s=125,maturidade=17,retirar=betas[, 1])
+semi <- SemimetricasClasse(curvas)
+previsto <- predict(curvas,semi)
+IntervaloFuturo(c(1,2500),percentual.testar, horizonte)
+valores.reais <- taxas.juro[py.range(intervalo.futuro), 17]
 
-
-PlotarExperimento(simulacoes,2,horizonte,intervalos)
+EQM(valores.reais,previsto)
+lines.ts(previsto,col=8)
+PlotarExperimento(simulacoes,17,horizonte,intervalos)
 Multiplot.ts(matrix(rep(1:20,each=20),nrow=20))

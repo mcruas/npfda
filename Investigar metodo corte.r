@@ -32,33 +32,38 @@ title(intervalo.total)
 
 i <- 200
 retirar <- taxas.juro[, 1]
-curvas <- PreparaCurvasCorte(taxas.juro,percentual.testar,c(1501,2500),s=21,maturidade=2,retirar=retirar)
+curvas <- PreparaCurvasCorte(taxas.juro,percentual.testar,c(1,2500),s=125,maturidade=2,retirar=retirar)
 valor.real <- PreparaValorFuturo(taxas.juro,percentual.testar,c(1,2500),s=61,maturidade=2)
-# curvas1 <- PreparaCurvasCorte(taxas.juro,percentual.testar,c(1001,2000),s=121,maturidade=2,todas.maturidades,taxas.juro[, 1])
-# str(curvas1)
 # View(curvas$passado.learn)
 # View(curvas$passado.test)
-Distancias <- SemimetricPCA(curvas$passado.learn,curvas$passado.test,4)
+Distancias <- SemimetricPCA(curvas$passado.learn,curvas$passado.test,5)
 # Distancias <- SemimetricDeriv(curvas$passado.learn,curvas$passado.test,0,5,c(0,10))
 #View(Distancias)
 # Multiplot.ts(t(curvas$passado.learn))
-# Multiplot.ts(t(curvas1$passado.learn))
+# Multiplot.ts(t(curvas$passado.test))
 dist <- 1
 
-# tmp <- as.data.frame(cbind(Distancias=Distancias[which(Distancias[, i] < dist), i],
-#              Resposta = curvas$futuro.learn[which(Distancias[, i] < dist)],
-#              Diff.resp = abs(curvas$futuro.learn[which(Distancias[, i] < dist)] - 
-#                                curvas$futuro.learn[i]),
-#              Indice = which(Distancias[, i] < dist)))
+# i <- 400
+# plot(1:20,taxas.juro[i, ])
+# plot(tempo.maturidades,taxas.juro[i, ])
+tmp <- as.data.frame(cbind(Distancias=Distancias[which(Distancias[, i] < dist), i],
+             Resposta = curvas$futuro.learn[which(Distancias[, i] < dist)],
+             Diff.resp = abs(curvas$futuro.learn[which(Distancias[, i] < dist)] - 
+                               curvas$futuro.learn[i]),
+             Indice = which(Distancias[, i] < dist)))
 
 Resposta <- curvas$futuro.learn + curvas$retirar.learn  # Resposta x Distancia
 # Resposta <-  curvas$retirar.learn # Random walk
 
 # compara a relação entre as respostas dos testes com a das respostas
-tmp2 <- data.frame(Distancias = Distancias[, i],
-                            Resp = Resposta,
-                            Diff.resp = abs(Resposta - valor.real[i]),
-                            Indice = 1:1939)
+# tmp2 <- data.frame(Distancias = Distancias[, i],
+#                             Resp = Resposta,
+#                             Diff.resp = abs(Resposta - valor.real[i]))
+xyplot( Diff.resp ~ Distancias , data = tmp)
+xyplot( Diff.resp ~ Distancias | equal.count(tmp2$Indice, number = 10), data = tmp2)
+
+summary(lm(Diff.resp ~ Distancias,tmp2))
+
 #View(tmp2)
 
 #View(data.frame(Distancias=Distancias[, i],
@@ -76,10 +81,6 @@ tmp2 <- data.frame(Distancias = Distancias[, i],
 #                                         max(data.plotar)))
 #Multiplot.ts(data.plotar)
 # 
-as.logical(c(FALSE,FALSE) + (c(TRUE,FALSE)))
-xyplot( Diff.resp ~ Distancias | equal.count(tmp2$Indice, number = 10), data = tmp2)
-
-summary(lm(Diff.resp ~ Distancias,tmp2))
 
 
 

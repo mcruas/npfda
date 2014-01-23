@@ -10,6 +10,8 @@ library("stringr")
 DiretorioResultados  <- function() setwd("~/Dropbox/R/NPFDA/Resultados")
 DiretorioPrincipal <-  function() setwd("~/Dropbox/R/NPFDA")
 
+calor  <- 400
+
 Ar.Previsao <- function(ts, intervalo.passado, intervalo.futuro, grau.arima = c(1,0,0)) {
 #########################################################
 # Realiza previsões para o intervalo futuro. O horizonte é definido pela
@@ -31,6 +33,7 @@ Ar.Previsao <- function(ts, intervalo.passado, intervalo.futuro, grau.arima = c(
   return(previstos)
 }
 
+frio <- 0
 
 Arima.Previsao <- function(ts, intervalo.passado, intervalo.futuro) {
   #########################################################
