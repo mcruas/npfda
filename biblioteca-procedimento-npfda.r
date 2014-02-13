@@ -6,13 +6,14 @@
 ### bibliotecas necessárias para a boa execução das rotinas
 source("biblioteca-npfda.r")
 library("stringr")
+library("forecast")
 
 DiretorioResultados  <- function() setwd("~/Dropbox/R/NPFDA/Resultados")
 DiretorioPrincipal <-  function() setwd("~/Dropbox/R/NPFDA")
 
 calor  <- 400
 
-Ar.Previsao <- function(ts, intervalo.passado, intervalo.futuro, grau.arima = c(1,0,0)) {
+Ar.Previsao <- function(ts, intervalo.passado, intervalo.futuro) {
 #########################################################
 # Realiza previsões para o intervalo futuro. O horizonte é definido pela
 # diferença entre os intervalos e o modelo é um AR(1) por default
@@ -24,18 +25,23 @@ Ar.Previsao <- function(ts, intervalo.passado, intervalo.futuro, grau.arima = c(
 # RETORNA
 # Um vetor com as previsões
 #########################################################
-  previstos <- rep(0,times=intervalo.futuro[2] - intervalo.futuro[1]+1)
+  previstos <- rep(0,times = diff(intervalo.futuro) + 1)
   horizonte  <- intervalo.futuro[1] - intervalo.passado[2]
   for (i in intervalo.futuro[1]:intervalo.futuro[2]) {
-    estimacao.arima <- arima(ts[intervalo.passado[1]:(i - horizonte)],order=grau.arima)
-    previstos[i - intervalo.futuro[1] + 1] <- forecast(estimacao.arima,h=horizonte)$mean[horizonte]
+    estimacao.arima <- ar(ts[intervalo.passado[1]:(i - horizonte)],order.max=1,method="mle")
+    previstos[i - intervalo.futuro[1] + 1] <- predict(estimacao.arima,
+                          n.ahead=horizonte, aic = FALSE)$pred[horizonte]
   }
   return(previstos)
 }
 
-frio <- 0
+
 
 Arima.Previsao <- function(ts, intervalo.passado, intervalo.futuro) {
+  ## COM PROBLEMAS ###
+#   Arima.Previsao(betas[, 1],c(1,2000),c(2200,2500))
+#   Error in predict.Arima(estimacao.arima, n.ahead = horizonte) : 
+#     'xreg' and 'newxreg' have different numbers of columns: 1 != 0
   #########################################################
   # Realiza previsões para o intervalo futuro. O horizonte é definido pela
   # diferença entre os intervalos e o modelo é um ARIMA cujos graus são 
@@ -51,7 +57,7 @@ Arima.Previsao <- function(ts, intervalo.passado, intervalo.futuro) {
   horizonte  <- intervalo.futuro[1] - intervalo.passado[2]
   for (i in intervalo.futuro[1]:intervalo.futuro[2]) {
     estimacao.arima <- auto.arima(ts[intervalo.passado[1]:(i - horizonte)])
-    previstos[i - intervalo.futuro[1] + 1] <- forecast(estimacao.arima,h=horizonte)$mean[horizonte]
+    previstos[i - intervalo.futuro[1] + 1] <- predict(estimacao.arima,n.ahead=horizonte)$pred[horizonte]
   }
   return(previstos)
 }
@@ -80,7 +86,7 @@ DieboldLi.EstimaBetas <- function (maturidades, taxas.juro, datas, lambda) {
 }
 
 
-DieboldLi.PreveBetas <- function(betas, intervalo.passado, intervalo.futuro) {
+DieboldLi.PreveBetas <- function(betas, intervalo.passado, intervalo.futuro, metodo = "ar") {
   ############################################################
   # Utiliza 
   # ARGS
@@ -89,7 +95,9 @@ DieboldLi.PreveBetas <- function(betas, intervalo.passado, intervalo.futuro) {
   #                     do intervalo do treino
   #   intervalo.futuro: vetor c(x,y), sendo x o início e y o fim
   #                     do intervalo a ser previsto
-  #   horizonte: o horizonte de previsão
+  #   metodo: o método para modelar e prever
+  #               "ar" (default) para usar um AR(1) e "arima" para usar a função
+  #               auto.arima, do pacote forecast
   # RETORNA
   #   uma matriz com as taxas de juros em função do tempo e 
   #   das maturidades
@@ -100,14 +108,22 @@ DieboldLi.PreveBetas <- function(betas, intervalo.passado, intervalo.futuro) {
                               intervalo.futuro[1]+1),ncol=3)
   horizonte  <- intervalo.futuro[1] - intervalo.passado[2]
   for (i in intervalo.futuro[1]:intervalo.futuro[2]) {
-    
     # betas.arima é uma lista com o arima aplicado para cada um dos betas.
-    # O beta de h passos à frente é obtido através de um AR(1)
-    betas.arima <- apply(betas[intervalo.passado[1]:(i - horizonte), ],
-                         2,auto.arima)
+    # O beta de h passos à frente é obtido através de um AR(1) ou ARIMA
+    if (metodo == "arima") {
+            betas.arima <- apply(betas[intervalo.passado[1]:(i - horizonte), ],
+                                  2,auto.arima)
+    } else {
+#             betas.arima <- apply(betas[intervalo.passado[1]:(i - horizonte), ],
+#                                   2,ar,order.max=1,method="mle")
+              betas.arima <- vector("list",3)
+            for (j in 1:3)
+                  betas.arima[[j]] <- ar(betas[intervalo.passado[1]:(i - horizonte), j],
+                                     order.max = 1, method = "mle")            
+    }                   
     betas.previstos[i - intervalo.futuro[1] + 1, ] <- 
-                    sapply(lapply(betas.arima,forecast, h=horizonte),
-                                  function(lst) lst$mean[horizonte])
+                      sapply(lapply(betas.arima,predict, n.ahead=horizonte),
+                                    function(lst) lst$pred[horizonte])
   }
   return(betas.previstos)
 }
