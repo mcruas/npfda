@@ -1,33 +1,6 @@
 # Funções --------------------------------------------------------------
 
 
-cummean <- function(x) {
-  if (is.vector(x)) output <- cumsum(x)/1:length(x)
-}
-
-
-  
-LocArq <- function (dir, intervalo, hor, metodo, maturidade) {
-  return(paste0(dir,intervalo[1],":",intervalo[2],"-",hor,"-",metodo,"-",maturidade))
-}
-
-Nome.vetor <- function(object) {
-  return(paste0(object[1],":",object[2]))
-}
-
-str(simulacoes,max.level=4)
-
-
-Plot.list <- function(object) {
-  tmp <- as.data.frame(object)
-  Multiplot.ts(tmp)
-}
-
-EQM <- function(d1,d2) {
-  mean((d1-d2)^2)
-}
-
-
 # Parâmetros para a estimação ---------------------------------------------
 
 maturidade <- 5 # maturidade do titulo
@@ -119,7 +92,7 @@ vetor.maturidade = c(1:4,6,8,12,17)
 #### Inicio estimações
 simulacoes <- vector("list", 0) # reseta os dados de simulacoes
 parametro <- 0.5 # lambda para diebold-li
-horizonte <- 5
+horizonte <- 50
 betas.02 <- DieboldLi.EstimaBetas(tempo.maturidades, taxas.juro,
                                  datas, 0.2)
 betas.05 <- DieboldLi.EstimaBetas(tempo.maturidades, taxas.juro,
@@ -146,32 +119,32 @@ for (j in 1:length(intervalos)) {
     taxas.previstas.ar <- Ar.Previsao(taxas.juro[ , maturidade], 
                                       intervalo.passado,intervalo.futuro)
     ## Prevê Corte ##
-    retirar <- taxas.juro[, 6]
-    curvas <- PreparaCurvasCorte(taxas.juro,maturidade,intervalo.passado, intervalo.futuro,retirar = retirar)
-    semimetricas <- SemimetricasClasse(curvas,q=1,tipo="deriv")
-    taxas.previstas.corte.deriv <- predict(curvas,semimetricas)
-    semimetricas <- SemimetricasClasse(curvas,q=5,tipo="pca")
-    taxas.previstas.corte.pca <- predict(curvas,semimetricas)
-    simulacoes[[Nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["corte.deriv"]][["1"]] <- taxas.previstas.corte.deriv
-    simulacoes[[Nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["corte.pca"]][["5"]] <- taxas.previstas.corte.pca
-    
-    retirar <- betas.05[, 1]
-    curvas <- PreparaCurvasCorte(taxas.juro,maturidade,intervalo.passado, intervalo.futuro,retirar = retirar)
-    semimetricas <- SemimetricasClasse(curvas,q=1,tipo="deriv")
-    taxas.previstas.corte.deriv <- predict(curvas,semimetricas)    
-    semimetricas <- SemimetricasClasse(curvas,q=5,tipo="pca")
-    taxas.previstas.corte.pca <- predict(curvas,semimetricas) ; rm(semimetricas)
-    simulacoes[[Nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["corte.deriv"]][["beta1"]] <- taxas.previstas.corte.deriv
-    simulacoes[[Nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["corte.pca"]][["beta5"]] <- taxas.previstas.corte.pca
+#     retirar <- taxas.juro[, 6]
+#     curvas <- PreparaCurvasCorte(taxas.juro,maturidade,intervalo.passado, intervalo.futuro,retirar = retirar)
+#     semimetricas <- SemimetricasClasse(curvas,q=1,tipo="deriv")
+#     taxas.previstas.corte.deriv <- predict(curvas,semimetricas)
+#     semimetricas <- SemimetricasClasse(curvas,q=5,tipo="pca")
+#     taxas.previstas.corte.pca <- predict(curvas,semimetricas)
+#     simulacoes[[Nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["corte.deriv"]][["1"]] <- taxas.previstas.corte.deriv
+#     simulacoes[[Nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["corte.pca"]][["5"]] <- taxas.previstas.corte.pca
+#     
+#     retirar <- betas.05[, 1]
+#     curvas <- PreparaCurvasCorte(taxas.juro,maturidade,intervalo.passado, intervalo.futuro,retirar = retirar)
+#     semimetricas <- SemimetricasClasse(curvas,q=1,tipo="deriv")
+#     taxas.previstas.corte.deriv <- predict(curvas,semimetricas)    
+#     semimetricas <- SemimetricasClasse(curvas,q=5,tipo="pca")
+#     taxas.previstas.corte.pca <- predict(curvas,semimetricas) ; rm(semimetricas)
+#     simulacoes[[Nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["corte.deriv"]][["beta1"]] <- taxas.previstas.corte.deriv
+#     simulacoes[[Nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["corte.pca"]][["beta5"]] <- taxas.previstas.corte.pca
     ## Valores reais ##
     valores.reais <- taxas.juro[py.range(intervalo.futuro), maturidade]
     
     ## Grava no arquivo ##
 #     simulacoes[[Nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["diebold"]][["0.5"]] <- taxas.previstas.diebold.05[, maturidade]
 #     simulacoes[[Nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["diebold"]][["0.2"]] <- taxas.previstas.diebold.02[, maturidade]
-    simulacoes[[Nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["rw"]][["1"]] <- taxas.previstas.rw
-    simulacoes[[Nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["ar"]][["1"]] <- taxas.previstas.ar
-    simulacoes[[Nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["valores reais"]][["0"]] <- valores.reais
+    simulacoes[[Nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["rw"]] <- taxas.previstas.rw
+    simulacoes[[Nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["ar"]] <- taxas.previstas.ar
+    simulacoes[[Nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["valores reais"]] <- valores.reais
   }
 }
 
@@ -222,7 +195,7 @@ PlotarExperimentoErros <- function(arquivo,maturidade,horizonte,intervalos) {
 # Plota a série temporal de erros para cada um dos métodos diferentes. A ordem está na
 # variável "metodos". As cores para cada método estão na mesma ordem.
 ######################################################################  
-  metodos <- c("diebold-li","rw","arima","corte.deriv","corte.pca","combinado")
+  metodos <- c("diebold-li","rw","arima","corte.deriv","corte.pca","combinado","corte.deriv.beta","corte.pca.beta")
   eqm <- array(0,dim=c(length(intervalos),length(metodos)))
   dimnames(eqm) <- list(intervalos,metodos)
   for (i in 1:length(intervalos)) {
@@ -233,6 +206,8 @@ PlotarExperimentoErros <- function(arquivo,maturidade,horizonte,intervalos) {
     taxas.corte.deriv <- arquivo[[Nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["corte.deriv"]][["1"]]
     taxas.corte.pca <- arquivo[[Nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["corte.pca"]][["5"]]
     taxas.combinado <- (taxas.corte.pca + taxas.corte.deriv)/2
+    taxas.corte.deriv <- arquivo[[Nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["corte.deriv"]][["beta1"]]
+    taxas.corte.pca <- arquivo[[Nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["corte.pca"]][["beta5"]]
     #lines.ts((taxas.combinado-series.erros[, dim(series.erros)[2]])^2, col = 7)
     valores.reais <- arquivo[[Nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["valores reais"]][["0"]]    
     eqm[i,1] <- EQM(valores.reais,taxas.diebold); eqm[i,2] <- EQM(valores.reais,taxas.rw)
@@ -253,9 +228,34 @@ Tabelao <- function(arquivo,vetor.maturidades,vetor.horizontes,vetor.intervalos)
 #
 #
 ######################################################
-arquivo[[Nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["rw"]][["1"]]
+for (i in vetor.maturidades)
+  for (j in vetor.horizontes)
+    for(k in vetor.intervalos) {
+        series <- arquivo[[Nome.vetor(k)]][[as.character(j)]][[as.character(i)]]
+    }
+  
+  View(series)
 }
 
+
+Plotar2 <- function(arquivo,maturidade,horizonte,intervalo) {
+  #######################################################
+  #
+  #
+  ######################################################
+  series <- as.data.frame(arquivo[[Nome.vetor(intervalo)]][[as.character(horizonte)]][[as.character(maturidade)]])
+  series.erros <- (series[, -ncol(series)]-series[, ncol(series)])^2
+  series.erros.medios <- apply(series.erros,2,FUN=cummean)
+  eqm <- apply(series[, -ncol(series)],2,FUN=EQM,series[, ncol(series)])
+  Multiplot.ts(series); title("Series")
+  Multiplot.ts(series.erros); title("Series dos erros")
+  Multiplot.ts(series.erros.medios); title("Series dos erros médios")
+  print(eqm)
+}
+
+
+# DESCOBRIR A ORDEM DAS CORES
+# plot(1:10,rep(0,10),col=1:10,lwd=5)
 
 curvas <- PreparaCurvasCorte(taxas.juro,percentual.testar,intervalo=c(1,2500),s=125,maturidade=17,retirar=betas[, 1])
 semi <- SemimetricasClasse(curvas)
@@ -265,6 +265,7 @@ valores.reais <- taxas.juro[py.range(intervalo.futuro), 17]
 
 EQM(valores.reais,previsto)
 lines.ts(previsto,col=8)
-PlotarExperimento(simulacoes,maturidade=8,horizonte=25,list(c(1,800)))
+Plotar2(simulacoes,maturidade=4,horizonte=5,c(1,800))
 PlotarExperimentoErros(simulacoes,17,horizonte,list(c(1,800)))
 Multiplot.ts(matrix(rep(1:20,each=20),nrow=20))
+View(as.data.frame(simulacoes[[Nome.vetor(intervalo.total)]][[as.character(25)]][[as.character(maturidade)]]))

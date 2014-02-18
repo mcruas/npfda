@@ -7,11 +7,12 @@
 source("biblioteca-npfda.r")
 library("stringr")
 library("forecast")
+library("termstrc")
+library("tseries")
 
 DiretorioResultados  <- function() setwd("~/Dropbox/R/NPFDA/Resultados")
 DiretorioPrincipal <-  function() setwd("~/Dropbox/R/NPFDA")
 
-calor  <- 400
 
 Ar.Previsao <- function(ts, intervalo.passado, intervalo.futuro) {
 #########################################################
@@ -62,7 +63,9 @@ Arima.Previsao <- function(ts, intervalo.passado, intervalo.futuro) {
   return(previstos)
 }
 
-
+ArrumaNome <- function(simulacoes) {
+  names(simulacoes)
+}
 
 DieboldLi.EstimaBetas <- function (maturidades, taxas.juro, datas, lambda) {
 #################################################################
@@ -116,14 +119,17 @@ DieboldLi.PreveBetas <- function(betas, intervalo.passado, intervalo.futuro, met
     } else {
 #             betas.arima <- apply(betas[intervalo.passado[1]:(i - horizonte), ],
 #                                   2,ar,order.max=1,method="mle")
-              betas.arima <- vector("list",3)
-            for (j in 1:3)
-                  betas.arima[[j]] <- ar(betas[intervalo.passado[1]:(i - horizonte), j],
+            betas.arima.1 <- ar(betas[intervalo.passado[1]:(i - horizonte), 1],
                                      order.max = 1, method = "mle")            
+            betas.arima.2 <- ar(betas[intervalo.passado[1]:(i - horizonte), 2],
+                                   order.max = 1, method = "mle")            
+            betas.arima.3 <- ar(betas[intervalo.passado[1]:(i - horizonte), 3],
+                                   order.max = 1, method = "mle")            
     }                   
     betas.previstos[i - intervalo.futuro[1] + 1, ] <- 
-                      sapply(lapply(betas.arima,predict, n.ahead=horizonte),
-                                    function(lst) lst$pred[horizonte])
+                      c(predict(betas.arima.1, n.ahead=horizonte)$pred[horizonte],
+                        predict(betas.arima.2, n.ahead=horizonte)$pred[horizonte],
+                        predict(betas.arima.3, n.ahead=horizonte)$pred[horizonte])
   }
   return(betas.previstos)
 }
@@ -943,7 +949,7 @@ py.range <- function(range){
   return(range[1]:range[2])
 }
 
-PreparaCurvasCorte  <- function(base,percentual.testar,intervalo,s,maturidade,todas.maturidades = NULL,retirar = NULL) {
+PreparaCurvasCorte  <- function(base,maturidade,intervalo.passado,intervalo.futuro,todas.maturidades = NULL,retirar = NULL) {
 ########################################################################
 # Essa função retorna uma variável com as curvas necessárias para fazer a estimação.
 # 
@@ -965,23 +971,15 @@ PreparaCurvasCorte  <- function(base,percentual.testar,intervalo,s,maturidade,to
     todas.maturidades <- 1:dim(base)[2]
   if ((dim(base)[2]) < max(todas.maturidades) ||  min(todas.maturidades) < 1)  
     stop("Você forneceu um conjunto inválido de maturidades na variável todas.maturidades")  
-  if (intervalo[1] < 1 || intervalo[2] > dim(base)[1])
-    stop("o intervalo para truncar a série temporal é inválido")
-  if (0 >= percentual.testar || percentual.testar >= 1)
-    stop("O percentual de teste fornecido é inválido")
-  tamanho.serie.temporal  = intervalo[2] - intervalo[1] + 1  
-  #learning[1] contém o indice da primeira curva para aprendizado e learning[2] o índice da última
-  learning <- c(1,trunc((1-percentual.testar)*tamanho.serie.temporal)-s) + intervalo[1] - 1
-  #testing é igual ao learning, mas para as curvas usadas para previsão
-  testing <- c(trunc((1-percentual.testar)*tamanho.serie.temporal),tamanho.serie.temporal-s) + intervalo[1] - 1
-  if(learning[1] >= learning[2] || testing[1] >= testing[2])
-    stop("Você forneceu um valor inválido de horizonte de previsão")  
+  horizonte <- intervalo.futuro[1] - intervalo.passado[2]
+  learning <- intervalo.passado - c(0,horizonte)
+  testing <- intervalo.futuro - horizonte
   curvas <- NULL
   curvas$retirar.learn <- retirar[learning[1]:learning[2]]
   curvas$retirar.test <- retirar[testing[1]:testing[2]]
   curvas$passado.learn <- as.matrix(base[learning[1]:learning[2], ] - retirar[learning[1]:learning[2]])
   curvas$passado.test <- as.matrix(base[testing[1]:testing[2], ] - retirar[testing[1]:testing[2]])
-  curvas$futuro.learn <- as.matrix(base[learning[1]:learning[2]+s,maturidade] - retirar[learning[1]:learning[2]])
+  curvas$futuro.learn <- as.matrix(base[learning[1]:learning[2]+horizonte,maturidade] - retirar[learning[1]:learning[2]])
   curvas$estimacao  <- NULL
   curvas$tipo  <- "corte"
   class(curvas) <- "fdaCorte"
@@ -1278,3 +1276,37 @@ SemimetricDeriv <- function(DATA1, DATA2, q = 0, nknot = 5, range.grid = c(0,10)
     SEMIMETRIC <- SEMIMETRIC + outer(COEF1[, f], COEF2[, f], "-")^2
   return(sqrt(SEMIMETRIC))
 }
+
+
+# Organizar depois --------------------------------------------------------
+
+
+
+cummean <- function(x) {
+  if (is.vector(x)) output <- cumsum(x)/1:length(x)
+  return(output)
+}
+
+
+
+LocArq <- function (dir, intervalo, hor, metodo, maturidade) {
+  return(paste0(dir,intervalo[1],":",intervalo[2],"-",hor,"-",metodo,"-",maturidade))
+}
+
+Nome.vetor <- function(object) {
+  return(paste0(object[1],":",object[2]))
+}
+
+str(simulacoes,max.level=4)
+
+
+Plot.list <- function(object) {
+  tmp <- as.data.frame(object)
+  Multiplot.ts(tmp)
+}
+
+EQM <- function(d1,d2) {
+  mean((d1-d2)^2)
+}
+
+
