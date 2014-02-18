@@ -81,7 +81,3 @@ summary(lm(Diff.resp ~ Distancias,tmp2))
 #                                         max(data.plotar)))
 #Multiplot.ts(data.plotar)
 # 
-
-
-
-
