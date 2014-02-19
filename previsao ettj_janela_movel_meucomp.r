@@ -92,7 +92,7 @@ vetor.maturidade = c(1:4,6,8,12,17)
 #### Inicio estimações
 simulacoes <- vector("list", 0) # reseta os dados de simulacoes
 parametro <- 0.5 # lambda para diebold-li
-horizonte <- 50
+horizonte <- 5
 betas.02 <- DieboldLi.EstimaBetas(tempo.maturidades, taxas.juro,
                                  datas, 0.2)
 betas.05 <- DieboldLi.EstimaBetas(tempo.maturidades, taxas.juro,
@@ -103,21 +103,21 @@ for (j in 1:length(intervalos)) {
   intervalo.passado <- IntervaloPassado(intervalo.total,percentual.testar)
   intervalo.futuro <- IntervaloFuturo(intervalo.total,percentual.testar, horizonte)
   ## Prevê Diebold-Li ##
-#   betas.previstos.05 <- DieboldLi.PreveBetas(betas.05, intervalo.passado,
-#                                           intervalo.futuro)
-#   taxas.previstas.diebold.05 <- DieboldLi.BetasParaTaxas(
-#     betas.previstos.05, tempo.maturidades, 0.5)
-#   betas.previstos.02 <- DieboldLi.PreveBetas(betas.02, intervalo.passado,
-#                                           intervalo.futuro)
-#   taxas.previstas.diebold.02 <- DieboldLi.BetasParaTaxas(
-#     betas.previstos.02, tempo.maturidades, 0.2)  
+  betas.previstos.05 <- DieboldLi.PreveBetas(betas.05, intervalo.passado,
+                                          intervalo.futuro)
+  taxas.previstas.diebold.05 <- DieboldLi.BetasParaTaxas(
+    betas.previstos.05, tempo.maturidades, 0.5)
+  betas.previstos.02 <- DieboldLi.PreveBetas(betas.02, intervalo.passado,
+                                          intervalo.futuro)
+  taxas.previstas.diebold.02 <- DieboldLi.BetasParaTaxas(
+    betas.previstos.02, tempo.maturidades, 0.2)  
   for (i in 1:length(vetor.maturidade)) {
     maturidade <- vetor.maturidade[i]
     ## Prevê RW sem drift ##
-    taxas.previstas.rw <- taxas.juro[py.range(intervalo.futuro) - horizonte, maturidade]
+#     taxas.previstas.rw <- taxas.juro[py.range(intervalo.futuro) - horizonte, maturidade]
     ## Prevê Arima ##
-    taxas.previstas.ar <- Ar.Previsao(taxas.juro[ , maturidade], 
-                                      intervalo.passado,intervalo.futuro)
+#     taxas.previstas.ar <- Ar.Previsao(taxas.juro[ , maturidade], 
+#                                       intervalo.passado,intervalo.futuro)
     ## Prevê Corte ##
 #     retirar <- taxas.juro[, 6]
 #     curvas <- PreparaCurvasCorte(taxas.juro,maturidade,intervalo.passado, intervalo.futuro,retirar = retirar)
@@ -137,14 +137,14 @@ for (j in 1:length(intervalos)) {
 #     simulacoes[[Nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["corte.deriv"]][["beta1"]] <- taxas.previstas.corte.deriv
 #     simulacoes[[Nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["corte.pca"]][["beta5"]] <- taxas.previstas.corte.pca
     ## Valores reais ##
-    valores.reais <- taxas.juro[py.range(intervalo.futuro), maturidade]
+#     valores.reais <- taxas.juro[py.range(intervalo.futuro), maturidade]
     
     ## Grava no arquivo ##
-#     simulacoes[[Nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["diebold"]][["0.5"]] <- taxas.previstas.diebold.05[, maturidade]
-#     simulacoes[[Nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["diebold"]][["0.2"]] <- taxas.previstas.diebold.02[, maturidade]
-    simulacoes[[Nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["rw"]] <- taxas.previstas.rw
-    simulacoes[[Nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["ar"]] <- taxas.previstas.ar
-    simulacoes[[Nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["valores reais"]] <- valores.reais
+    simulacoes[[Nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["diebold"]][["0.5"]] <- taxas.previstas.diebold.05[, maturidade]
+    simulacoes[[Nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["diebold"]][["0.2"]] <- taxas.previstas.diebold.02[, maturidade]
+#     simulacoes[[Nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["rw"]] <- taxas.previstas.rw
+#     simulacoes[[Nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["ar"]] <- taxas.previstas.ar
+#     simulacoes[[Nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["valores reais"]] <- valores.reais
   }
 }
 
@@ -231,22 +231,30 @@ Tabelao <- function(arquivo,vetor.maturidades,vetor.horizontes,vetor.intervalos)
 for (i in vetor.maturidades)
   for (j in vetor.horizontes)
     for(k in vetor.intervalos) {
-        series <- arquivo[[Nome.vetor(k)]][[as.character(j)]][[as.character(i)]]
+      series <- as.data.frame(arquivo[[Nome.vetor(k)]][[as.character(j)]][[as.character(i)]])
+      eqm <- apply(series[, -which(names(series)=="valores.reais")],2,FUN=EQM,series[, which(names(series)=="valores.reais")])
+      print(paste(i," ",j," ",k[1],"-",k[2],":",sep='')); print(eqm)
     }
-  
-  View(series)
+}
+
+Combinar.Previsoes <- function(df,m1,m2) {
+####################
+  df <- cbind(df,(df[, which(names(series)==m1)] + df[, which(names(series)==m2)])/2)
+  names(df)[ncol(df)] <- paste(m1,"+",m2)
+  return(df)
 }
 
 
 Plotar2 <- function(arquivo,maturidade,horizonte,intervalo) {
   #######################################################
-  #
+  # 
   #
   ######################################################
   series <- as.data.frame(arquivo[[Nome.vetor(intervalo)]][[as.character(horizonte)]][[as.character(maturidade)]])
-  series.erros <- (series[, -ncol(series)]-series[, ncol(series)])^2
+  series <- Combinar.Previsoes(series,"corte.pca.5","diebold.0.5")
+  series.erros <- (series[, -which(names(series)=="valores.reais")] - series[, which(names(series)=="valores.reais")])^2
   series.erros.medios <- apply(series.erros,2,FUN=cummean)
-  eqm <- apply(series[, -ncol(series)],2,FUN=EQM,series[, ncol(series)])
+  eqm <- apply(series[, -which(names(series)=="valores.reais")],2,FUN=EQM,series[, which(names(series)=="valores.reais")])
   Multiplot.ts(series); title("Series")
   Multiplot.ts(series.erros); title("Series dos erros")
   Multiplot.ts(series.erros.medios); title("Series dos erros médios")
@@ -265,7 +273,8 @@ valores.reais <- taxas.juro[py.range(intervalo.futuro), 17]
 
 EQM(valores.reais,previsto)
 lines.ts(previsto,col=8)
-Plotar2(simulacoes,maturidade=4,horizonte=5,c(1,800))
+Plotar2(simulacoes,maturidade=2,horizonte=5,c(1,800))
 PlotarExperimentoErros(simulacoes,17,horizonte,list(c(1,800)))
 Multiplot.ts(matrix(rep(1:20,each=20),nrow=20))
 View(as.data.frame(simulacoes[[Nome.vetor(intervalo.total)]][[as.character(25)]][[as.character(maturidade)]]))
+Tabelao(simulacoes,vetor.maturidade,c(5,25,50),list(c(1,800),c(201,1000)))

@@ -120,11 +120,11 @@ DieboldLi.PreveBetas <- function(betas, intervalo.passado, intervalo.futuro, met
 #             betas.arima <- apply(betas[intervalo.passado[1]:(i - horizonte), ],
 #                                   2,ar,order.max=1,method="mle")
             betas.arima.1 <- ar(betas[intervalo.passado[1]:(i - horizonte), 1],
-                                     order.max = 1, method = "mle")            
+                                     order.max = 1, method = "ols")            
             betas.arima.2 <- ar(betas[intervalo.passado[1]:(i - horizonte), 2],
-                                   order.max = 1, method = "mle")            
+                                   order.max = 1, method = "ols")            
             betas.arima.3 <- ar(betas[intervalo.passado[1]:(i - horizonte), 3],
-                                   order.max = 1, method = "mle")            
+                                   order.max = 1, method = "ols")            
     }                   
     betas.previstos[i - intervalo.futuro[1] + 1, ] <- 
                       c(predict(betas.arima.1, n.ahead=horizonte)$pred[horizonte],
