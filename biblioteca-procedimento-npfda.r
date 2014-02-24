@@ -36,8 +36,6 @@ Ar.Previsao <- function(ts, intervalo.passado, intervalo.futuro) {
   return(previstos)
 }
 
-
-
 Arima.Previsao <- function(ts, intervalo.passado, intervalo.futuro) {
   ## COM PROBLEMAS ###
 #   Arima.Previsao(betas[, 1],c(1,2000),c(2200,2500))
@@ -63,8 +61,9 @@ Arima.Previsao <- function(ts, intervalo.passado, intervalo.futuro) {
   return(previstos)
 }
 
-ArrumaNome <- function(simulacoes) {
-  names(simulacoes)
+cummean <- function(x) {
+  if (is.vector(x)) output <- cumsum(x)/1:length(x)
+  return(output)
 }
 
 DieboldLi.EstimaBetas <- function (maturidades, taxas.juro, datas, lambda) {
@@ -172,6 +171,10 @@ DieboldLi.BetasParaTaxas <- function(betas,maturidades,lambda) {
 }
 
 
+EQM <- function(d1,d2) {
+  mean((d1-d2)^2)
+}
+
 EscreveResumo <- function (maturidade,curvas,s,valores.reais,truncar, ...) {
 ################################################################
 # Essa função escreve um resumo das estimaçoes nos arquivo recebidos
@@ -201,357 +204,6 @@ EscreveResumo <- function (maturidade,curvas,s,valores.reais,truncar, ...) {
   #cat(data,curvas$tipo,curvas$estimacao,file=nome_arquivos$registro,sep=",",append=TRUE)
   #cat("\n",file=nome_arquivos$registro,append=TRUE)
   
-}
-
-
-
-EstimacaoSerieTemporal <- function(serie.temporal,percentual.testar,s,passo,obs.por.curva,vetor.n.componentes.principais,vetor.grau.derivada) {
-  
-  curvas  <- NULL
-  
-  tamanho.serie <- length(serie.temporal)
-  truncar <- c(1,tamanho.serie)
-  valores.reais  <- PreparaValorFuturo(serie.temporal,percentual.testar,truncar,s,maturidade)      
-  curvas <- PreparaCurvasPasso(base,percentual.testar,truncar,s,maturidade,passo,obs.por.curva)
-  
-  quantidade.estimacoes  <- length(vetor.n.componentes.principais)+length(vetor.grau.derivada)
-  previsoes <- matrix(rnorm(800),nrow=quantidade.estimacoes,ncol=percentual.testar*tamanho.serie)
-  
-  # Estima utilizando a semimétrica PCA
-  for (n.componentes.principais in vetor.n.componentes.principais) {
-    
-    semimetrica1 <- SemimetricPCA(curvas$passado.learn.media,curvas$passado.learn.media,n.componentes.principais)
-    semimetrica2 <- SemimetricPCA(curvas$passado.learn.media,curvas$passado.test.media,n.componentes.principais)
-    
-    curvas$estimacao  <-  NULL
-    curvas$estimacao  <- FunopareKnn(Response=curvas$futuro.learn.media,CURVES=curvas$passado.learn.media,
-                                       PRED=curvas$passado.test.media,neighbour=n.vizinhos,kind.of.kernel="quadratic",
-                                       SEMIMETRIC1=semimetrica1,SEMIMETRIC2=semimetrica2)$Predicted.values +
-        + curvas$media.test
-    
-  } # fim da PCA
-  
-  
-  # Estima utilizando a semimétrica derivada
-  for (grau.derivada in vetor.grau.derivada){
-    
-    semimetrica1 <- SemimetricDeriv(curvas$passado.learn.media,curvas$passado.learn.media,grau.derivada,nknot=5,range.grid=c(0,1))
-    semimetrica2 <- SemimetricDeriv(curvas$passado.learn.media,curvas$passado.test.media,grau.derivada,nknot=5,range.grid=c(0,1))
-    
-    curvas$estimacao <- FunopareKnnLcv(Response=curvas$futuro.learn.media,CURVES=curvas$passado.learn.media,PRED=curvas$passado.test.media,kind.of.kernel="quadratic",SEMIMETRIC1=semimetrica1,SEMIMETRIC2=semimetrica2)$Predicted.values + curvas$media.test
-    for (n.vizinhos in vetor.n.vizinhos)
-    {
-      curvas$estimacao <- FunopareKnnLcv(Response=curvas$futuro.learn.media,CURVES=curvas$passado.learn.media,
-                                      PRED=curvas$passado.test.media,kind.of.kernel="quadratic",
-                                      SEMIMETRIC1=semimetrica1,SEMIMETRIC2=semimetrica2)$Predicted.values +
-        + curvas$media.test
-      #EscreveResumo(maturidade,curvas,s,valores.reais,truncar,n.vizinhos,paste(passo,",",obs.por.curva,",deriv regr ",grau.derivada,sep=""))
-      
-    }
-  } # fim da deriv
-  plot(serie.temporal,type="l")
-
-}
-
-
-EstimacaoCompletaCorte <- function(base,percentual.testar,vetor.truncar,vetor.maturidade,vetor.s,todas.maturidades,vetor.n.componentes.principais,vetor.grau.derivada){
-# a partir de uma base de dados, a estimação pelo método "corte" é executada para cada diferente parâmetro
-# 
-#
-  
-  curvas  <- NULL
-  
-  for (truncar in vetor.truncar)
-    for (maturidade in vetor.maturidade)
-      for (s in vetor.s){
-        
-        valores.reais  <- PreparaValorFuturo(base,percentual.testar,truncar,s,maturidade)      
-        curvas <- PreparaCurvasCorte(base,percentual.testar,truncar,s,maturidade,todas.maturidades)
-        
-        semimetrica1 <- SemimetricDeriv(curvas$passado.learn,curvas$passado.learn,0,nknot=4,range.grid=c(0,1))
-        semimetrica2 <- SemimetricDeriv(curvas$passado.learn,curvas$passado.test,0,nknot=4,range.grid=c(0,1))
-        
-        #        curvas$estimacao <- FunopareKnnLcv(Response=curvas$futuro.learn,CURVES=curvas$passado.learn,PRED=curvas$passado.test,kind.of.kernel="quadratic",SEMIMETRIC1=semimetrica1,SEMIMETRIC2=semimetrica2)$Predicted.values
-        #        print(mean((valores.reais - curvas$estimacao)^2))
-        
-        for (n.vizinhos in vetor.n.vizinhos)
-        {
-          curvas$estimacao  <- FunopareKnn(Response=curvas$futuro.learn,CURVES=curvas$passado.learn,
-                                           PRED=curvas$passado.test,neighbour=n.vizinhos,kind.of.kernel="quadratic",
-                                           SEMIMETRIC1=semimetrica1,SEMIMETRIC2=semimetrica2)$Predicted.values
-          
-          EscreveResumo(maturidade,curvas,s,valores.reais,truncar,paste("nviz ",n.vizinhos,"-deriv regr ",grau.derivada,sep=""))
-          
-        }
-      } # fim da deriv
-
-  semimetrica1 <- SemimetricPCA(curvas$passado.learn,curvas$passado.learn,n.componentes.principais)
-  semimetrica2 <- SemimetricPCA(curvas$passado.learn,curvas$passado.test,n.componentes.principais)
-  
-  #        curvas$estimacao <- FunopareKnnLcv(Response=curvas$futuro.learn,CURVES=curvas$passado.learn,PRED=curvas$passado.test,kind.of.kernel="quadratic",SEMIMETRIC1=semimetrica1,SEMIMETRIC2=semimetrica2)$Predicted.values
-  #        print(mean((valores.reais - curvas$estimacao)^2))
-  
-  for (n.vizinhos in vetor.n.vizinhos)
-  {
-    curvas$estimacao  <- FunopareKnn(Response=curvas$futuro.learn,CURVES=curvas$passado.learn,
-                                     PRED=curvas$passado.test,neighbour=n.vizinhos,kind.of.kernel="quadratic",
-                                     SEMIMETRIC1=semimetrica1,SEMIMETRIC2=semimetrica2)$Predicted.values
-    
-    EscreveResumo(maturidade,curvas,s,valores.reais,truncar,paste("nviz ",n.vizinhos,"-deriv regr ",grau.derivada,sep=""))
-    
-  }
-} # fim da deriv
-
-  
-
-EstimacaoCompletaCorte2 <- function(base,percentual.testar,vetor.truncar,vetor.maturidade,vetor.s,todas.maturidades,vetor.n.componentes.principais,vetor.grau.derivada){
-  
-  curvas  <- NULL
-  
-  for (truncar in vetor.truncar)
-    for (maturidade in vetor.maturidade)
-      for (s in vetor.s){
-        
-        valores.reais  <- PreparaValorFuturo(base,percentual.testar,truncar,s,
-                                             maturidade)      
-        curvas <- PreparaCurvasCorte(base,percentual.testar,truncar,s,
-                                     maturidade,todas.maturidades)
-                    
-        # Estima utilizando a semimétrica PCA
-        for (n.componentes.principais in vetor.n.componentes.principais) {
-          
-          semimetrica1 <- SemimetricPCA(curvas$passado.learn.media,curvas$passado.learn.media,n.componentes.principais)
-          semimetrica2 <- SemimetricPCA(curvas$passado.learn.media,curvas$passado.test.media,n.componentes.principais)
-          #              curvas$estimacao <- FunopareKnnLcv(Response=curvas$futuro.learn.media,CURVES=curvas$passado.learn.media,PRED=curvas$passado.test.media,kind.of.kernel="quadratic",SEMIMETRIC1=semimetrica1,SEMIMETRIC2=semimetrica2)$Predicted.values + curvas$media.test
-          #mean((valores.reais - curvas$estimacao)^2)
-          curvas$estimacao  <-  NULL
-          for (n.vizinhos in vetor.n.vizinhos)
-          {
-            curvas$estimacao  <- FunopareKnn(Response=curvas$futuro.learn.media,CURVES=curvas$passado.learn.media,
-                                             PRED=curvas$passado.test.media,neighbour=n.vizinhos,kind.of.kernel="quadratic",
-                                             SEMIMETRIC1=semimetrica1,SEMIMETRIC2=semimetrica2)$Predicted.values +
-              + curvas$media.test
-            EscreveResumo(maturidade,curvas,s,valores.reais,truncar,paste("nviz ",n.vizinhos,"-deriv regr ",grau.derivada,sep=""))
-          }
-          
-          
-        } # fim da PCA
-        
-        
-        # Estima utilizando a semimétrica derivada
-        for (grau.derivada in vetor.grau.derivada){
-          
-          semimetrica1 <- SemimetricDeriv(curvas$passado.learn.media,curvas$passado.learn.media,grau.derivada,nknot=5,range.grid=c(0,1))
-          semimetrica2 <- SemimetricDeriv(curvas$passado.learn.media,curvas$passado.test.media,grau.derivada,nknot=5,range.grid=c(0,1))
-          
-          curvas$estimacao <- FunopareKnnLcv(Response=curvas$futuro.learn.media,CURVES=curvas$passado.learn.media,PRED=curvas$passado.test.media,kind.of.kernel="quadratic",SEMIMETRIC1=semimetrica1,SEMIMETRIC2=semimetrica2)$Predicted.values + curvas$media.test
-          for (n.vizinhos in vetor.n.vizinhos)
-          {
-            curvas$estimacao <- FunopareKnn(Response=curvas$futuro.learn.media,CURVES=curvas$passado.learn.media,
-                                            PRED=curvas$passado.test.media,neighbour=n.vizinhos,kind.of.kernel="quadratic",
-                                            SEMIMETRIC1=semimetrica1,SEMIMETRIC2=semimetrica2)$Predicted.values +
-              + curvas$media.test
-            EscreveResumo(maturidade,curvas,s,valores.reais,truncar,n.vizinhos,paste(passo,",",obs.por.curva,",deriv regr ",grau.derivada,sep=""))
-          }
-          
-        } # fim da deriv
-        
-      }
-}
-
-
-
-
-
-
-EstimacaoCompletaPasso <- function(base,percentual.testar,vetor.truncar,vetor.maturidade,vetor.s,vetor.passo,vetor.obs.por.curva,vetor.n.componentes.principais,vetor.grau.derivada){
-  
-  curvas  <- NULL
-  
-  for (truncar in vetor.truncar)
-    for (maturidade in vetor.maturidade)
-      for (s in vetor.s){
-        
-        valores.reais  <- PreparaValorFuturo(base,percentual.testar,truncar,s,maturidade)      
-        
-        for (passo in vetor.passo)
-          for (obs.por.curva in vetor.obs.por.curva){
-            
-            curvas <- PreparaCurvasPasso(base,percentual.testar,truncar,s,maturidade,passo,obs.por.curva)
-            
-            # Estima utilizando a semimétrica PCA
-            for (n.componentes.principais in vetor.n.componentes.principais) {
-              
-              semimetrica1 <- SemimetricPCA(curvas$passado.learn.media,curvas$passado.learn.media,n.componentes.principais)
-              semimetrica2 <- SemimetricPCA(curvas$passado.learn.media,curvas$passado.test.media,n.componentes.principais)
-              #              curvas$estimacao <- FunopareKnnLcv(Response=curvas$futuro.learn.media,CURVES=curvas$passado.learn.media,PRED=curvas$passado.test.media,kind.of.kernel="quadratic",SEMIMETRIC1=semimetrica1,SEMIMETRIC2=semimetrica2)$Predicted.values + curvas$media.test
-              #mean((valores.reais - curvas$estimacao)^2)
-              curvas$estimacao  <-  NULL
-              for (n.vizinhos in vetor.n.vizinhos)
-              {
-                curvas$estimacao  <- FunopareKnn(Response=curvas$futuro.learn.media,CURVES=curvas$passado.learn.media,
-                                                 PRED=curvas$passado.test.media,neighbour=n.vizinhos,kind.of.kernel="quadratic",
-                                                 SEMIMETRIC1=semimetrica1,SEMIMETRIC2=semimetrica2)$Predicted.values +
-                  + curvas$media.test
-                EscreveResumo(maturidade,curvas,s,valores.reais,truncar,paste("nviz ",n.vizinhos,"-deriv regr ",grau.derivada,sep=""))
-              }
-              
-              
-            } # fim da PCA
-            
-            
-            # Estima utilizando a semimétrica derivada
-            for (grau.derivada in vetor.grau.derivada){
-              
-              semimetrica1 <- SemimetricDeriv(curvas$passado.learn.media,curvas$passado.learn.media,grau.derivada,nknot=5,range.grid=c(0,1))
-              semimetrica2 <- SemimetricDeriv(curvas$passado.learn.media,curvas$passado.test.media,grau.derivada,nknot=5,range.grid=c(0,1))
-              
-              curvas$estimacao <- FunopareKnnLcv(Response=curvas$futuro.learn.media,CURVES=curvas$passado.learn.media,PRED=curvas$passado.test.media,kind.of.kernel="quadratic",SEMIMETRIC1=semimetrica1,SEMIMETRIC2=semimetrica2)$Predicted.values + curvas$media.test
-              for (n.vizinhos in vetor.n.vizinhos)
-              {
-                curvas$estimacao <- FunopareKnn(Response=curvas$futuro.learn.media,CURVES=curvas$passado.learn.media,
-                                                PRED=curvas$passado.test.media,neighbour=n.vizinhos,kind.of.kernel="quadratic",
-                                                SEMIMETRIC1=semimetrica1,SEMIMETRIC2=semimetrica2)$Predicted.values +
-                  + curvas$media.test
-                EscreveResumo(maturidade,curvas,s,valores.reais,truncar,n.vizinhos,paste(passo,",",obs.por.curva,",deriv regr ",grau.derivada,sep=""))
-              }
-              
-            } # fim da deriv
-            
-          }
-      }
-}
-
-
-EstimacaoCompletaPasso2 <- function(base,percentual.testar,vetor.truncar,vetor.maturidade,vetor.s,vetor.passo,vetor.obs.por.curva,vetor.n.componentes.principais,vetor.grau.derivada){
-  
-  curvas  <- NULL
-  
-  for (truncar in vetor.truncar)
-    for (maturidade in vetor.maturidade)
-      for (s in vetor.s){
-        
-        valores.reais  <- PreparaValorFuturo(base, percentual.testar, truncar,
-                                             s, maturidade)      
-        for (passo in vetor.passo)
-          for (obs.por.curva in vetor.obs.por.curva){
-            
-            curvas <- PreparaCurvasPasso(base, percentual.testar, truncar, s,
-                                         maturidade, passo, obs.por.curva)
-            # Estima as distâncias entre as curvas utilizando a semimétrica 
-            # baseada em componentes principais
-            for (n.componentes.principais in vetor.n.componentes.principais) {
-              
-              semimetrica1 <- SemimetricPCA(curvas$passado.learn.subtraiult,
-                                            curvas$passado.learn.subtraiult,
-                                            n.componentes.principais)
-              semimetrica2 <- SemimetricPCA(curvas$passado.learn.subtraiult,
-                                            curvas$passado.test.subtraiult,
-                                            n.componentes.principais)
-              
-              curvas$estimacao <- FunopareKnnLcv(Response=curvas$futuro.learn.subtraiult,
-                                                 CURVES=curvas$passado.learn.subtraiult,
-                                                 PRED=curvas$passado.test.subtraiult,
-                                                 kind.of.kernel="quadratic",
-                                                 SEMIMETRIC1=semimetrica1,
-                                                 SEMIMETRIC2=semimetrica2)$Predicted.values + 
-                + curvas$ultimas.obs.test
-              
-              EscreveResumo(maturidade,curvas,s,valores.reais,nome_arquivos,truncar,paste(passo,",",obs.por.curva,",pca regr ",n.componentes.principais,sep=""))
-              
-              
-            } # fim da PCA
-            
-            
-            # Estima utilizando a semimétrica derivada
-            for (grau.derivada in vetor.grau.derivada){
-              
-              semimetrica1 <- SemimetricDeriv(curvas$passado.learn.subtraiult,
-                                              curvas$passado.learn.subtraiult,
-                                              grau.derivada,nknot=5,range.grid=c(0,1))
-              semimetrica2 <- SemimetricDeriv(curvas$passado.learn.subtraiult,
-                                              curvas$passado.test.subtraiult,grau.derivada,nknot=5,range.grid=c(0,1))
-              
-              curvas$estimacao <- FunopareKnnLcv(Response=curvas$futuro.learn.subtraiult,
-                                                 CURVES=curvas$passado.learn.subtraiult,
-                                                 PRED=curvas$passado.test.subtraiult,
-                                                 kind.of.kernel="quadratic",SEMIMETRIC1=semimetrica1,
-                                                 SEMIMETRIC2=semimetrica2)$Predicted.values + 
-                + curvas$ultimas.obs.test
-              
-              #Se nomes de arquivos forem fornecidos, escreve neles; senão, apenas exibe o MSE
-              if (!missing(nome_arquivos)) {
-                EscreveResumo(maturidade,curvas,s,valores.reais,nome_arquivos,truncar,paste(passo,",",obs.por.curva,",deriv regr ",grau.derivada,sep=""))
-              } else {
-                mean((valores.reais - curvas$estimacao)^2)
-              }
-              
-            } # fim da deriv
-            
-          }
-      }
-}
-
-
-EstimacaoCompletaRW <- function(base,percentual.testar,vetor.truncar,vetor.maturidade,vetor.s){
-  
-  curvas  <- NULL
-  
-  for (truncar in vetor.truncar)
-    for (maturidade in vetor.maturidade)
-      for (s in vetor.s){
-        
-        valores.reais  <- PreparaValorFuturo(base,percentual.testar,truncar,s,maturidade)
-        curvas <- PreparaCurvasRW(base,percentual.testar,truncar,s,maturidade)
-        EscreveResumo(maturidade,curvas,s,valores.reais,truncar)
-        
-      }
-}
-
-
-
-
-ExtraiMediaEUltimaObs <- function (curvas) {
-  # Essa função serve para subtrair a média de cada curva e colocar os 
-  # valores encontrados na lista curvas
-  
-  # ARGS
-  #    Curva é uma variável criada por alguma função PreparaCurva
-  
-  curvas$media.learn <- rowMeans(curvas$passado.learn, na.rm = TRUE)
-  curvas$media.test <- rowMeans(curvas$passado.test, na.rm = TRUE)
-  
-  curvas$passado.learn.media <- curvas$passado.learn - curvas$media.learn
-  curvas$futuro.learn.media <- curvas$futuro.learn - curvas$media.learn
-  curvas$passado.test.media <- curvas$passado.test - curvas$media.test
-  
-  # Aqui, os valores da última observação são retirados e armazenados em 
-  # subtraiult
-  obs.por.curva  <- length(curvas$passado.learn[1,])
-  curvas$ultimas.obs.learn  <-  curvas$passado.learn[,obs.por.curva]
-  curvas$ultimas.obs.test  <-  curvas$passado.test[,obs.por.curva]
-  
-  curvas$passado.learn.subtraiult  <-  curvas$passado.learn - curvas$ultimas.obs.learn
-  curvas$futuro.learn.subtraiult <- curvas$futuro.learn - curvas$ultimas.obs.learn
-  curvas$passado.test.subtraiult <- curvas$passado.test - curvas$ultimas.obs.test
-  
-  return(curvas)
-}
-
-
-FunopareSimples <- function (SEMIMETRIC2, Response, PRED, neighbour) {
-  # Faz a estimação Kernel  
-  ordem <- apply(X=SEMIMETRIC2,MARGIN=2,FUN=order)
-  
-  h <- semimetrica2[apply(X=semimetrica2,MARGIN=2,FUN=order)[knn, ]]
-  sum(semimetrica2[,30] <= h[30])
-  
-  estimacao  <- rep(0,ncol(semimetrica2))
-  for (i in ncol(semimetrica2)){
-    indices.menor.distancia <- which(order(semimetrica2[, i]) < knn)
-    estimacao[i] <- Response[indices.menor.distancia]*semimetrica2[indices.menor.distancia, i] / sum(semimetrica2[indices.menor.distancia, i] / h.knn)
-  }
-  return(estimacao)
 }
 
 
@@ -849,22 +501,6 @@ FunopareKnnLcv <- function(Response, CURVES, PRED, kind.of.kernel = "quadratic",
   }
 }
 
-
-# GraficoImagem <- function(df, ...){
-# # A partir de um data.frame cria um gráfico de calor
-# # O data.frame deve possuir como primeiros argumentos seus parâmetros, e
-# #   na sequência apenas os intervalos de análise
-#   nome.cols <- names(df)
-#   colunas.intervalos <- grep(pattern="[0-9]*-[0-9]*",nome.cols)  
-#   which.min(apply(df[, colunas.intervalos],1,sum))
-#   
-#   for(i in (setdiff(1:ncol(df),colunas.intervalos))
-#     if (is.factor(df[, i]))
-#       df[, i] <- as.integer(df[, i])
-#   
-#   str(df)
-# }
-
 IntervaloFuturo <- function(intervalo,percentual.testar, horizonte) {
   #############################################################
   # ARGS
@@ -882,7 +518,6 @@ IntervaloFuturo <- function(intervalo,percentual.testar, horizonte) {
   return(output)
 }
 
-
 IntervaloPassado <- function(intervalo,percentual.testar) {
 #############################################################
 # ARGS
@@ -899,9 +534,13 @@ IntervaloPassado <- function(intervalo,percentual.testar) {
   return(output)
 }
 
+LocArq <- function (dir, intervalo, hor, metodo, maturidade) {
+  return(paste0(dir,intervalo[1],":",intervalo[2],"-",hor,"-",metodo,"-",maturidade))
+}
+
 # Multiplot.ts(matrix(rep(1:20,each=20),nrow=20))
 
-Multiplot.ts <- function(data, ... , range){
+Multiplot.ts <- function(data, ... , range, dates){
 ############################################################
 # This function plots many time series in the same graph
 #
@@ -913,15 +552,20 @@ Multiplot.ts <- function(data, ... , range){
   if (missing(range)) 
     range <- 1:dim(data)[2]
   size.series <- dim(data)[2]
-  plot(data[, range[1]],col=1,ylim=c(min(data[, range]), 
-                                     max(data[, range])), type="l",  ...)
-  for (i in range[-1]) {
-    lines(data[, i],col=i, lty=((i - 1) %/% 8 + 1), ...)   
-  }
-    
-  
-}
-
+  if (missing(dates)) {
+    plot(data[, range[1]],col=1,ylim=c(min(data[, range]), 
+                                       max(data[, range])), type="l",  ...)    
+    for (i in range[-1]) {
+      lines(data[, i],col=i, lty=((i - 1) %/% 8 + 1), ...)   
+    }
+  } else {
+    plot(dates, data[, range[1]],col=1,ylim=c(min(data[, range]), 
+                                       max(data[, range])), type="l",  ...)
+    for (i in range[-1]) {
+      lines(dates,data[, i],col=i, lty=((i - 1) %/% 8 + 1), ...)   
+    }
+  } 
+}  
 
 Multiplotdiv.ts <- function(data, div){
   
@@ -944,9 +588,15 @@ Multiplotdiv.ts <- function(data, div){
   }
 }
 
-py.range <- function(range){
-  # implements python function range, but starting on 1 instead of 0
-  return(range[1]:range[2])
+Nome.vetor <- function(object) {
+  return(paste0(object[1],":",object[2]))
+}
+
+
+
+Plot.list <- function(object) {
+  tmp <- as.data.frame(object)
+  Multiplot.ts(tmp)
 }
 
 PreparaCurvasCorte  <- function(base,maturidade,intervalo.passado,intervalo.futuro,todas.maturidades = NULL,retirar = NULL) {
@@ -957,8 +607,10 @@ PreparaCurvasCorte  <- function(base,maturidade,intervalo.passado,intervalo.futu
 #   base: uma base de dados; cada linha representa uma série temporal
 #   percentual.testar: o percentual da amostra que deve ser utilizado para testar 
 #         a capacidade de previsão do modelo
-#   intervalo: o intervalo de análise da série temporal
-#   s: o horizonte de previsão
+#   intervalo.passado: vetor c(x,y), sendo x o início e y o fim
+#                     do intervalo do treino
+#   intervalo.futuro: vetor c(x,y), sendo x o início e y o fim
+#                     do intervalo a ser previsto
 #   maturidade: índice da maturidade que se deseja prever
 #   todas.maturidades: indica as maturidades que se quer utilizar para compor as curvas
 #   retirar: vetor com as quantidades que devem ser retiradas do valor base para
@@ -1164,6 +816,11 @@ SemimetricasClasse <- function(curvas, ..., tipo = "pca") {
   return(semimetricas)
 }
 
+py.range <- function(range){
+  # implements python function range, but starting on 1 instead of 0
+  return(range[1]:range[2])
+}
+
 
 SemimetricPCA <- function(DATA1, DATA2, q = 5){
   ###############################################################
@@ -1276,37 +933,4 @@ SemimetricDeriv <- function(DATA1, DATA2, q = 0, nknot = 5, range.grid = c(0,10)
     SEMIMETRIC <- SEMIMETRIC + outer(COEF1[, f], COEF2[, f], "-")^2
   return(sqrt(SEMIMETRIC))
 }
-
-
-# Organizar depois --------------------------------------------------------
-
-
-
-cummean <- function(x) {
-  if (is.vector(x)) output <- cumsum(x)/1:length(x)
-  return(output)
-}
-
-
-
-LocArq <- function (dir, intervalo, hor, metodo, maturidade) {
-  return(paste0(dir,intervalo[1],":",intervalo[2],"-",hor,"-",metodo,"-",maturidade))
-}
-
-Nome.vetor <- function(object) {
-  return(paste0(object[1],":",object[2]))
-}
-
-str(simulacoes,max.level=4)
-
-
-Plot.list <- function(object) {
-  tmp <- as.data.frame(object)
-  Multiplot.ts(tmp)
-}
-
-EQM <- function(d1,d2) {
-  mean((d1-d2)^2)
-}
-
 
