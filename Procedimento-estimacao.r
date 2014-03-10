@@ -1,5 +1,6 @@
 # Código principal --------------------------------------------------------
 
+load(".RData")
 setwd("~/Dropbox/R/NPFDA")
 
 library(termstrc)
@@ -42,7 +43,8 @@ datas <- as.Date(as.character(read.csv("Dados/base_nefasta_mat.csv", sep=",")
 ##################################
 
 # intervalos: uma lista com os intervalos nos quais se fará a análise
-vetor.intervalos <- list(c(1,800),c(201,1000)) # para base reduzida
+vetor.intervalos <- list(c(1,800),c(101,900),c(201,1000),c(301,1100),
+                         c(401,1200),c(501,1300)) # para base reduzida
 
 # vetor.maturidade: contém os índices das maturidades que serão estimadas 
 # e previstas
@@ -55,69 +57,72 @@ vetor.horizontes <- c(5,25,50)
 # simulacoes <- vector("list", 0) # RESETA os dados de simulacoes
 load("simulacoes_reduzida.dad")
 
-
-betas.02 <- DieboldLi.EstimaBetas(tempo.maturidades, taxas.juro,
+betas.02.a <- DieboldLi.EstimaBetas(tempo.maturidades, taxas.juro + 3,
                                   datas, 0.2)
-betas.05 <- DieboldLi.EstimaBetas(tempo.maturidades, taxas.juro,
+betas.05.a <- DieboldLi.EstimaBetas(tempo.maturidades, taxas.juro + 3,
                                   datas, 0.5)
+betas.02 <- cbind(beta_1=betas.02.a[, 1] - 3,betas.02.a[, 2:3]); rm(betas.02.a)
+betas.05 <- cbind(beta_1=betas.05.a[, 1] - 3,betas.05.a[, 2:3]); rm(betas.05.a)
+
 for (horizonte in vetor.horizontes) {
   for (j in 1:length(vetor.intervalos)) {
     intervalo.total <- vetor.intervalos[[j]]
     intervalo.passado <- IntervaloPassado(intervalo.total,percentual.testar)
     intervalo.futuro <- IntervaloFuturo(intervalo.total,percentual.testar, horizonte)
     ## Prevê Diebold-Li ##
-#     betas.previstos.05 <- DieboldLi.PreveBetas(betas.05, intervalo.passado,
-#                                                intervalo.futuro)
-#     taxas.previstas.diebold.05 <- DieboldLi.BetasParaTaxas(
-#       betas.previstos.05, tempo.maturidades, 0.5)
-#     betas.previstos.02 <- DieboldLi.PreveBetas(betas.02, intervalo.passado,
-#                                                intervalo.futuro)
-#     taxas.previstas.diebold.02 <- DieboldLi.BetasParaTaxas(
-#       betas.previstos.02, tempo.maturidades, 0.2)  
+    betas.previstos.05 <- DieboldLi.PreveBetas(betas.05, intervalo.passado,
+                                               intervalo.futuro)
+    taxas.previstas.diebold.05 <- DieboldLi.BetasParaTaxas(
+      betas.previstos.05, tempo.maturidades, 0.5)
+    betas.previstos.02 <- DieboldLi.PreveBetas(betas.02, intervalo.passado,
+                                               intervalo.futuro)
+    taxas.previstas.diebold.02 <- DieboldLi.BetasParaTaxas(
+      betas.previstos.02, tempo.maturidades, 0.2)  
     for (i in 1:length(vetor.maturidade)) {
       maturidade <- vetor.maturidade[i]
+      ## Grava previsões de diebold-li para as maturidades  desejadas ##
+            simulacoes[[Nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["diebold.05"]] <- taxas.previstas.diebold.05[, maturidade]
+            simulacoes[[Nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["diebold.02"]] <- taxas.previstas.diebold.02[, maturidade]
       ## Prevê RW sem drift ##
-      #     taxas.previstas.rw <- taxas.juro[py.range(intervalo.futuro) - horizonte, maturidade]
+          taxas.previstas.rw <- taxas.juro[py.range(intervalo.futuro) - horizonte, maturidade]
+          simulacoes[[Nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["rw"]] <- taxas.previstas.rw
       ## Prevê Arima ##
-      #     taxas.previstas.ar <- Ar.Previsao(taxas.juro[ , maturidade], 
-      #                                       intervalo.passado,intervalo.futuro)
+          taxas.previstas.ar <- Ar.Previsao(taxas.juro[ , maturidade], 
+                                            intervalo.passado,intervalo.futuro)
+          simulacoes[[Nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["ar"]] <- taxas.previstas.ar
       ## Prevê Corte ##
-            retirar <- taxas.juro[, 6]
-            curvas <- PreparaCurvasCorte(taxas.juro,maturidade,intervalo.passado, intervalo.futuro,retirar = retirar)
-#             semimetricas <- SemimetricasClasse(curvas,q=1,tipo="deriv")
-#             taxas.previstas.corte.deriv.1 <- predict(curvas,semimetricas)
-#             simulacoes[[Nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["corte.deriv.0"]] <- taxas.previstas.corte.deriv.1
-            semimetricas <- SemimetricasClasse(curvas,q=0,tipo="deriv")
-            taxas.previstas.corte.deriv.0 <- predict(curvas,semimetricas)
-            simulacoes[[Nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["corte.deriv.0"]] <- taxas.previstas.corte.deriv.0
-      #     semimetricas <- SemimetricasClasse(curvas,q=5,tipo="pca")
-#           taxas.previstas.corte.pca <- predict(curvas,semimetricas)
-#           simulacoes[[Nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["corte.pca"]][["5"]] <- taxas.previstas.corte.pca
+          retirar <- taxas.juro[, 6]
+          curvas <- PreparaCurvasCorte(taxas.juro,maturidade,intervalo.passado, intervalo.futuro,retirar = retirar)
+          semimetricas <- SemimetricasClasse(curvas,q=1,tipo="deriv")
+          taxas.previstas.corte.deriv.1 <- predict(curvas,semimetricas)
+          simulacoes[[Nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["crt.d1.rmat6"]] <- taxas.previstas.corte.deriv.1
+          semimetricas <- SemimetricasClasse(curvas,q=0,tipo="deriv")
+          taxas.previstas.corte.deriv.0 <- predict(curvas,semimetricas)
+          simulacoes[[Nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["crt.d0.rmat6"]] <- taxas.previstas.corte.deriv.0
+          semimetricas <- SemimetricasClasse(curvas,q=5,tipo="pca")
+          taxas.previstas.corte.pca <- predict(curvas,semimetricas)
+          simulacoes[[Nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["crt.p5.rmat6"]] <- taxas.previstas.corte.pca
 
-#           curvas <- PreparaCurvasCorte(taxas.juro,maturidade,intervalo.passado, intervalo.futuro)
-#           semimetricas <- SemimetricasClasse(curvas,q=1,tipo="deriv")
-#           taxas.previstas.corte.deriv <- predict(curvas,semimetricas)
-#           semimetricas <- SemimetricasClasse(curvas,q=5,tipo="pca")
-#           taxas.previstas.corte.pca <- predict(curvas,semimetricas)
-#           simulacoes[[Nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["corte.deriv1.retira0"]] <- taxas.previstas.corte.deriv
-#           simulacoes[[Nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["corte.pca5.retira0"]] <- taxas.previstas.corte.pca     
-      #     retirar <- betas.05[, 1]
-      #     curvas <- PreparaCurvasCorte(taxas.juro,maturidade,intervalo.passado, intervalo.futuro,retirar = retirar)
-      #     semimetricas <- SemimetricasClasse(curvas,q=1,tipo="deriv")
-      #     taxas.previstas.corte.deriv <- predict(curvas,semimetricas)    
-      #     semimetricas <- SemimetricasClasse(curvas,q=5,tipo="pca")
-      #     taxas.previstas.corte.pca <- predict(curvas,semimetricas) ; rm(semimetricas)
-      #     simulacoes[[Nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["corte.deriv"]][["beta1"]] <- taxas.previstas.corte.deriv
-      #     simulacoes[[Nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["corte.pca"]][["beta5"]] <- taxas.previstas.corte.pca
+          curvas <- PreparaCurvasCorte(taxas.juro,maturidade,intervalo.passado, intervalo.futuro)
+          semimetricas <- SemimetricasClasse(curvas,q=1,tipo="deriv")
+          taxas.previstas.corte.deriv <- predict(curvas,semimetricas)
+          simulacoes[[Nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["crt.d1"]] <- taxas.previstas.corte.deriv
+          semimetricas <- SemimetricasClasse(curvas,q=5,tipo="pca")
+          taxas.previstas.corte.pca <- predict(curvas,semimetricas)
+          simulacoes[[Nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["crt.p5"]] <- taxas.previstas.corte.pca
+          
+          retirar <- betas.05[, 1]
+          curvas <- PreparaCurvasCorte(taxas.juro,maturidade,intervalo.passado, intervalo.futuro,retirar = retirar)
+          semimetricas <- SemimetricasClasse(curvas,q=1,tipo="deriv")
+          taxas.previstas.corte.deriv <- predict(curvas,semimetricas)    
+          simulacoes[[Nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["crt.d1.rb1"]] <- taxas.previstas.corte.deriv
+          semimetricas <- SemimetricasClasse(curvas,q=5,tipo="pca")
+          taxas.previstas.corte.pca <- predict(curvas,semimetricas)
+          simulacoes[[Nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["crt.p5.rb1"]] <- taxas.previstas.corte.pca
+          rm(semimetricas)
       ## Valores reais ##
-      #     valores.reais <- taxas.juro[py.range(intervalo.futuro), maturidade]
-      
-      ## Grava no arquivo ##
-#       simulacoes[[Nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["diebold"]][["0.5"]] <- taxas.previstas.diebold.05[, maturidade]
-#       simulacoes[[Nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["diebold"]][["0.2"]] <- taxas.previstas.diebold.02[, maturidade]
-      #     simulacoes[[Nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["rw"]] <- taxas.previstas.rw
-      #     simulacoes[[Nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["ar"]] <- taxas.previstas.ar
-      #     simulacoes[[Nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["valores reais"]] <- valores.reais
+          valores.reais <- taxas.juro[py.range(intervalo.futuro), maturidade]
+          simulacoes[[Nome.vetor(intervalo.total)]][[as.character(horizonte)]][[as.character(maturidade)]][["valores reais"]] <- valores.reais      
     }
   }
 }
@@ -126,7 +131,6 @@ for (horizonte in vetor.horizontes) {
 # frequência para não correr o risco de sobrescrever os experimentos e perder
 # todo o trabalho
 save(simulacoes,file="simulacoes_reduzida.dad")
-
 
 # DESCOBRIR A ORDEM DAS CORES
 # plot(1:10,rep(0,10),col=1:10,lwd=5)
@@ -145,10 +149,28 @@ Multiplot.ts(matrix(rep(1:20,each=20),nrow=20))
 View(as.data.frame(simulacoes[[Nome.vetor(intervalo.total)]][[as.character(25)]][[as.character(maturidade)]]))
 
 
-tabelao <- Tabelao(simulacoes,vetor.maturidade,c(5,25,50),list(c(1,800)))
-heatmap(tabelao[, c(-9,-10)],scale="none",Rowv=NA) # tira as estimacoes do que não retiram nada
+tabelao <- Tabelao(simulacoes,2,c(5,25,50),vetor.intervalos)
+tabelao <- tabelao[, c(-8,-9)] # tira as estimacoes do que não retiram nada
+require(stringr)
+par.ordenar <- 1; tabelao <- tabelao[order(str_split_fixed(rownames(tabelao), "[|]",3)[, par.ordenar]), ] # par.ordenar define qual por qual dos 3 campos que será ordenada as estimações
+# tabelao <- CombinarPrevisoes(tabelao,"corte.pca.5","rw")
+# tabelao <- CombinarPrevisoes(tabelao,"corte.deriv.1","rw")
+heatmap(tabelao, scale="row",Rowv=NA) # scale="row",Rowv=NA
 require(lattice)
-levelplot(t(tabelao[order(rownames(tabelao), c(-9,-10)]), scale=list(x=list(rot=45)))
-tabelao <- Tabelao(simulacoes,vetor.maturidade,c(5,25,50),list(c(201,1000)))
-heatmap(tabelao[, c(-9,-10)],Rowv=NA) # tira as estimacoes do que não retiram nada
-levelplot(t(tabelao[order(rownames(tabelao)), c(-9,-10)]), scale=list(x=list(rot=45)))
+levelplot(tabelao, scale=list(x=list(rot=45)))
+summary(tabelao)
+
+tabelao <- Tabelao(simulacoes,1,5,vetor.intervalos)
+heatmap(tabelao[, c(-8,-9)],Rowv=NA) # tira as estimacoes do que não retiram nada
+levelplot(t(tabelao[order(rownames(tabelao)), c(-8,-9)]), scale=list(x=list(rot=45)))
+View(tabelao)
+tabelao.agrupado <- TabelaoAgrupado(simulacoes,vetor.maturidade,horizonte=50,vetor.intervalos)
+heatmap(tabelao.agrupado[c(-8,-9), ],scale="column",Colv=NA) # tira as estimacoes do que não retiram nada
+
+PlotarSeries(simulacoes,maturidade=4,horizonte=25,intervalo=c(1,800))
+View(tabelao.agrupado)
+
+series <- ExtraiSeries(simulacoes,1,5,c(1,800))
+gw.test(x = tmp[,7], y = tmp[,3], p = tmp[,12], T = 800, tau = 5,method="HAC")
+GiacominiWhite(series,benchmarking=3,valor.real=12,tamanho=800,horizonte=5)
+View(series)
