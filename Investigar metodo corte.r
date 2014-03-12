@@ -2,8 +2,8 @@
 maturidade <- 2
 intervalo.total <- c(1,2500)
 
-retirar <- taxas.juro[, 6]
-curvas <- PreparaCurvasCorte(taxas.juro,percentual.testar,intervalo.total,s=horizonte,maturidade=maturidade, retirar = retirar)
+retirar <- taxas.juro[, 10]
+curvas <- PreparaCurvasCorte(taxas.juro,intervalo.passado,intervalo.futuro,maturidade=maturidade, retirar = retirar)
 semimetricas <- SemimetricasClasse(curvas,q=1,tipo="deriv")
 taxas.previstas.corte <- predict(curvas,semimetricas)
 

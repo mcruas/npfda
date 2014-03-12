@@ -11,7 +11,10 @@ source("biblioteca-npfda.r")
 
 # O vetor maturidade contém o tamanho, em anos, das maturidades com os meses abaixo:
 tempo.maturidades <- c(0.25 , 0.5,  0.75,  1,  1.25,  1.5,	1.75,	2,	2.5,	3,	4,
-                       5,	6,	7,	8,	9,	10,	12, 15, 20)
+                       5,	6,	7,	8,	9,	10,	12, 15, 20) ## Usar para Base nefasta
+tempo.maturidades <- c(0.25 , 0.5,  0.75,  1,  1.25,  1.5,  1.75,	2,	2.5,	3,	4,
+                       5,	6,	7,	8,	9,	10) ## Usar para Base mensal
+
 
 # Quanto do intervalo total será usado para testar; 0.5 = 50% É utilizado para 
 # definir as variáveis intervalo.passado e intervalo.futuro. Essas duas 
@@ -30,16 +33,20 @@ percentual.testar <- 0.2
 
 
 ############## Escolher UMA das BASES DE DADO abaixo: ######################
-## 1) A base de dados pode ter todas as observações ...
+## 1.a) BASE NEFASTA: A base de dados pode ter todas as observações ...
 taxas.juro <- as.matrix(read.csv("Dados/base_nefasta_mat.csv", sep=",")
                         [, 2:(length(tempo.maturidades)+1)])
 datas <- as.Date(as.character(read.csv("Dados/base_nefasta_mat.csv", sep=",")
                               [ , 1]), format = "%Y-%m-%d")
-## 2)  ... ou conter as observações de 5 em 5 dias
+## 1.b)  ... ou conter as observações de 5 em 5 dias
 taxas.juro <- as.matrix(read.csv("Dados/base_nefasta_mat.csv", sep=",")
                         [1:1307*5, 2:(length(tempo.maturidades)+1)])
 datas <- as.Date(as.character(read.csv("Dados/base_nefasta_mat.csv", sep=",")
                               [1:1307*5 , 1]), format = "%Y-%m-%d")
+## 2) Base menor
+taxas.juro <- as.matrix(read.table("~/Dropbox/R/NPFDA/Dados/dados_mensais.csv", 
+                                   header=T, quote="\""))
+datas <- as.Date(as.character(rownames(taxas.juro)), format = "%Y%m%d")
 ##################################
 
 # intervalos: uma lista com os intervalos nos quais se fará a análise
@@ -51,11 +58,12 @@ vetor.intervalos <- list(c(1,800),c(101,900),c(201,1000),c(301,1100),
 vetor.maturidade = c(1:4,6,8,12,17)
 
 # vetor.horizontes
-vetor.horizontes <- c(5,25,50)
+vetor.horizontes <- c(5,25,50)  vetor.horizontes <- c(1,3,6,12)
 
 #### Inicio estimações
 # simulacoes <- vector("list", 0) # RESETA os dados de simulacoes
-load("simulacoes_reduzida.dad")
+# load("simulacoes_reduzida.dad")
+# load("simulacoes_reduzida_base_mensal.dad")
 
 betas.02.a <- DieboldLi.EstimaBetas(tempo.maturidades, taxas.juro + 3,
                                   datas, 0.2)
@@ -130,7 +138,8 @@ for (horizonte in vetor.horizontes) {
 # salva o objeto simulações no lugar desejado. Aconselha-se salvar com
 # frequência para não correr o risco de sobrescrever os experimentos e perder
 # todo o trabalho
-save(simulacoes,file="simulacoes_reduzida.dad")
+# save(simulacoes,file="simulacoes_reduzida.dad")
+save(simulacoes,file="simulacoes_reduzida_base_mensal.dad")
 
 # DESCOBRIR A ORDEM DAS CORES
 # plot(1:10,rep(0,10),col=1:10,lwd=5)

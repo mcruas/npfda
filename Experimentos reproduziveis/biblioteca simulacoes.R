@@ -5,6 +5,15 @@
 ###########################################################
 
 
+AnimacaoJuros <- function(taxas.juro, tempo.maturidades, file) {
+  
+  image <- array(0, c(2,17, dim(taxas.juro)[1]))
+  for (i in 1:(dim(taxas.juro)[1])) {
+    image[,,i] <- as.matrix(cbind(tempo.maturidades,taxas.juro[i,]))
+  }
+  View(image[,,i])
+}
+
 Ar.Previsao <- function(ts, intervalo.passado, intervalo.futuro) {
   #########################################################
   # Realiza previsões para o intervalo futuro. O horizonte é definido pela
@@ -58,17 +67,21 @@ EQM <- function(d1,d2) {
 }
 
 
-ExtraiSeries <- function(arquivo,maturidade,horizonte,intervalo) {
+ExtraiSeries <- function(arquivo,maturidade,horizonte,vetor.intervalos) {
   #######################################################
   # Exibe uma tabela com o erro quadrático médio de cada método para cada conjunto
   # de maturidade x horizonte x intervalo.
   ######################################################
-  series <- as.data.frame(arquivo[[Nome.vetor(intervalo)]][[as.character(horizonte)]][[as.character(maturidade)]])
+  series <- NULL
+  for (intervalo in vetor.intervalos) {
+    series.tmp <- as.data.frame(arquivo[[Nome.vetor(intervalo)]][[as.character(horizonte)]][[as.character(maturidade)]])
+    series <- rbind(series,series.tmp)
+  }
   return(series)
 }
 
 
-GiacominiWhite <- function(tabela, benchmarking, valor.real, tamanho, horizonte) {
+GiacominiWhite <- function(arquivo, benchmarking, valor.real, tamanho, horizonte, vetor.maturidade,vetor.intervalos) {
   ############################################################
   # Aplica o teste de Giacomini-White para uma sequência de previsões, comparando
   # todas com a capacidade de previsão de um mesmo método como benchmarking
@@ -79,19 +92,25 @@ GiacominiWhite <- function(tabela, benchmarking, valor.real, tamanho, horizonte)
   #   valor.real: o índice da coluna dos valores da série real
   #   tamanho: o tamanho da amostra que gerou as previsões
   #   horizonte: o horizonte das previsões
+  #   vetor.maturidade: vetor com o índice das maturidades para testar
   # RETORNO
   #   um vetor com os valores da estatística de Giacomini-White, para cada  método
   ############################################################# 
   #install.packages(c("polynom", "fracdiff", "hypergeo", "longmemo")) 
   #install.packages("~/Dropbox/R/NPFDA/afmtools_0.1.8.tar.gz", repos = NULL, type
   #= "source")
-  if (!require(afmtools)) stop("Por favor, instale a biblioteca afmtools. Instrucoes na descricao da funcao.")
-  tmp <- apply(tabela[, c(-benchmarking,-valor.real)], 2, gw.test, 
-               y = tabela[, benchmarking], p = tabela[, valor.real],
-               T = tamanho, tau = horizonte, method="HAC")
-  resultados <- lapply(tmp,function(x) x$p.value)
-  #gw.test(x = tmp[,7], y = tmp[,3], p = tmp[,12], T = 800, tau = 5,method="HAC")
-  return(resultados)
+  tabela.gw <- NULL
+  for (i in vetor.maturidade) {
+    tabela <- ExtraiSeries(arquivo,maturidade=i,horizonte=5,vetor.intervalos)
+    if (!require(afmtools)) stop("Por favor, instale a biblioteca afmtools. Instrucoes na descricao da funcao.")
+    tmp <- apply(tabela[, c(-benchmarking,-valor.real)], 2, gw.test, 
+                 y = tabela[, benchmarking], p = tabela[, valor.real],
+                 T = tamanho, tau = horizonte, method="HAC")
+    resultados <- unlist(lapply(tmp,function(x) x$p.value))
+    #gw.test(x = tmp[,7], y = tmp[,3], p = tmp[,12], T = 800, tau = 5,method="HAC")
+    tabela.gw <- rbind(tabela.gw,i=resultados)
+  }
+  return(tabela.gw)
 }
 
 
@@ -220,5 +239,5 @@ TabelaoAgrupado <- function(arquivo,vetor.maturidades,horizonte,vetor.intervalos
     tabela <- cbind(tabela,colMeans(tabela.tmp))
   }
   colnames(tabela) <- tempo.maturidades[vetor.maturidade]
-  return(tabela)
+  return(t(tabela))
 }
