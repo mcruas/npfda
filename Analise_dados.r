@@ -2,6 +2,13 @@
 
 # Resultados gerais -------------------------------------------------------
 
+tabela <- TabelaEQM(simulacoes,vetor.maturidade,horizonte=12)
+heatmap(tabela,scale="row", Colv=NA, Rowv=NA)
+View(tabela)
+PlotarSeries(simulacoes,maturidade=1,horizonte=3,subconjunto=c(1,20))
+
+
+
 tabelao.agrupado <- TabelaoAgrupado(simulacoes,vetor.maturidade,horizonte=5,vetor.intervalos)
 View(tabelao.agrupado); rowSums(tabelao.agrupado)
 tabelao.agrupado <- tabelao.agrupado/tabelao.agrupado[, 3]
@@ -34,7 +41,4 @@ levelplot(tabelao, scale=list(x=list(rot=45)))
 summary(tabelao)
 View(tabelao)
 
-# Plot das previsões (erros médios, erros e nível
-)
-PlotarSeries(simulacoes,maturidade=4,horizonte=25,intervalo=c(1,800))
 
