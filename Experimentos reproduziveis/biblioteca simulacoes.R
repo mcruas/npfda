@@ -29,7 +29,7 @@ Ar.Previsao <- function(ts, intervalo.passado, intervalo.futuro) {
   previstos <- rep(0,times = diff(intervalo.futuro) + 1)
   horizonte  <- intervalo.futuro[1] - intervalo.passado[2]
   for (i in intervalo.futuro[1]:intervalo.futuro[2]) {
-    estimacao.arima <- ar(ts[intervalo.passado[1]:(i - horizonte)],order.max=1,method="mle")
+    estimacao.arima <- ar(ts[intervalo.passado[1]:(i - horizonte)],order.max=1,method="ols")
     previstos[i - intervalo.futuro[1] + 1] <- predict(estimacao.arima,
                                                       n.ahead=horizonte, aic = FALSE)$pred[horizonte]
   }
@@ -186,19 +186,20 @@ Plot.list <- function(object) {
   Multiplot.ts(tmp)
 }
 
-PlotarSeries <- function(arquivo,percentual.testar,maturidade,horizonte,intervalo) {
+PlotarSeries <- function(arquivo,maturidade,horizonte,subconjunto = NULL) {
   ####################################################### 
   # Exibe 3 gráficos: I) séries previstas por cada método e a realizada; II) erro
   # quadrático de cada série prevista, por unidade de tempo; III) erro quadrático
   # médio de cada série, até a unidade de tempo t. 
   ######################################################
-  series <- as.data.frame(arquivo[[Nome.vetor(intervalo)]][[as.character(horizonte)]][[as.character(maturidade)]])
+  series <- as.data.frame(arquivo[[as.character(horizonte)]][[as.character(maturidade)]])
+  if (!is.null(subconjunto)) series <- series[py.range(subconjunto), ]
   series <- series[, order(names(series))] # coloca as colunas em ordem alfabética
   #series <- Combinar.Previsoes(series,"corte.pca.5","diebold.0.5") # para combinar previsões
   series.erros <- as.data.frame((series[, -which(names(series)=="valores.reais")] - series[, which(names(series)=="valores.reais")])^2)
   series.erros.medios <- as.data.frame(apply(series.erros,2,FUN=cummean))
-  eqm <- apply(series[, -which(names(series)=="valores.reais")],2,FUN=EQM,series[, which(names(series)=="valores.reais")])
-  parte.titulo <- paste(Nome.vetor(intervalo.total)," | hor ", as.character(horizonte), " | maturidade", as.character(maturidade))
+  #eqm <- apply(series[, -which(names(series)=="valores.reais")],2,FUN=EQM,series[, which(names(series)=="valores.reais")])
+  parte.titulo <- paste("horizonte ", as.character(horizonte), " | maturidade", as.character(maturidade))
   par(xpd=T, mar=par()$mar+c(0,0,0,4)) # Diminui o espaço do gráfico à direita para ter mais espaço para a legenda
   Multiplot.ts(series.erros.medios); title(paste("Series dos erros médios: ",parte.titulo),cex.main=0.8)
   legend("topright", inset=c(-0.32,0), legend=names(series.erros.medios), lty = (1:length(names(series.erros.medios)) - 1) %/% 8 + 1, col=1:length(names(series.erros.medios)), title="Métodos",cex=0.6)
@@ -208,6 +209,26 @@ PlotarSeries <- function(arquivo,percentual.testar,maturidade,horizonte,interval
   legend("topright", inset=c(-0.32,0), legend=names(series), lty = (1:length(names(series)) - 1) %/% 8 + 1, col=1:length(names(series)), title="Métodos",cex=0.6)
   par(mar=c(5, 4, 4, 2) + 0.1) # retorna 'par' para seu valor original
   print(eqm)
+}
+
+PlotarSeriesRw <- function(arquivo,maturidade,horizonte,subconjunto = NULL) {
+  ####################################################### 
+  # Exibe 3 gráficos: I) séries previstas por cada método e a realizada; II) erro
+  # quadrático de cada série prevista, por unidade de tempo; III) erro quadrático
+  # médio de cada série, até a unidade de tempo t. 
+  ######################################################
+  series <- as.data.frame(arquivo[[as.character(horizonte)]][[as.character(maturidade)]])
+  if (!is.null(subconjunto)) series <- series[py.range(subconjunto), ]
+  series <- series[, order(names(series))] # coloca as colunas em ordem alfabética
+  series.erros <- as.data.frame((series[, -which(names(series)=="valores.reais")] - series[, which(names(series)=="valores.reais")])^2)
+  series.erros.cum <- as.data.frame(apply(series.erros,2,FUN=cumsum))
+  series.erros.rw <- series.erros.cum[, which(names(series.erros.cum)=="rw")] - series.erros.cum[, -which(names(series.erros.cum)=="rw")]
+  #series.erros.rw <- series.erros.medios[, which(names(series.erros.medios)=="rw")] - series.erros.medios[, -which(names(series.erros.medios)=="rw")]
+  parte.titulo <- paste("horizonte ", as.character(horizonte), " | maturidade", as.character(tempo.maturidades[maturidade]))
+  par(xpd=T, mar=par()$mar+c(0,0,0,4)) # Diminui o espaço do gráfico à direita para ter mais espaço para a legenda
+  Multiplot.ts(series.erros.rw); title(paste("Erros quadráticos acumulados de previsão: ",parte.titulo),cex.main=0.8)
+  legend("topright", inset=c(-0.3,0), legend=names(series.erros.rw), lty = (1:length(names(series.erros.rw)) - 1) %/% 8 + 1, col=1:length(names(series.erros.rw)), title="Métodos",cex=0.6, y.intersp=0.5)
+  par(mar=c(5, 4, 4, 2) + 0.1) # retorna 'par' para seu valor original
 }
 
 Tabelao <- function(arquivo,vetor.maturidades,vetor.horizontes,vetor.intervalos) {
@@ -228,16 +249,35 @@ Tabelao <- function(arquivo,vetor.maturidades,vetor.horizontes,vetor.intervalos)
   return(tabela)
 }
 
-TabelaoAgrupado <- function(arquivo,vetor.maturidades,horizonte,vetor.intervalos) {
+TabelaoAgrupado <- function(arquivo,vetor.maturidade,horizonte,vetor.intervalos) {
   #######################################################
   # Exibe uma tabela com o erro quadrático médio de cada método para cada conjunto
   # de maturidade x horizonte x intervalo.
   ######################################################
   tabela <- NULL
-  for (i in vetor.maturidades) {
+  for (i in vetor.maturidade) {
     tabela.tmp <- Tabelao(arquivo, i, horizonte, vetor.intervalos)
     tabela <- cbind(tabela,colMeans(tabela.tmp))
   }
   colnames(tabela) <- tempo.maturidades[vetor.maturidade]
   return(t(tabela))
+}
+
+TabelaEQM <- function(arquivo,vetor.maturidade, horizonte, normaliza = TRUE, subconjunto = NULL) {
+  #######################################################
+  # Exibe uma tabela com o erro quadrático médio de cada método para cada
+  # de maturidade x método, para um determinado horizonte.
+  ######################################################
+  tabela <- NULL
+  for (maturidade in vetor.maturidade) { 
+    # arquivo <- simulacoes
+    series <- as.data.frame(arquivo[[as.character(horizonte)]][[as.character(maturidade)]])
+    if (!is.null(subconjunto)) series <- series[py.range(subconjunto), ]
+    eqm <- apply(series[, -which(names(series)=="valores.reais")],2,FUN=EQM,series[, which(names(series)=="valores.reais")])
+    tabela <- cbind(tabela,eqm)
+  }
+  colnames(tabela) <- tempo.maturidades[vetor.maturidade]
+  if (normaliza) tabela <- t(t(tabela[-which(rownames(tabela)=="rw"), ]) / tabela[which(rownames(tabela)=="rw"), ])
+  tabela <- sqrt(tabela)
+  return(tabela)
 }

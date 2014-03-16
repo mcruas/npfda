@@ -371,11 +371,11 @@ PreparaCurvasCorte  <- function(base,maturidade,intervalo.passado,intervalo.futu
   learning <- intervalo.passado - c(0,horizonte)
   testing <- intervalo.futuro - horizonte
   curvas <- NULL
-  curvas$retirar.learn <- retirar[learning[1]:learning[2]]
-  curvas$retirar.test <- retirar[testing[1]:testing[2]]
-  curvas$passado.learn <- as.matrix(base[learning[1]:learning[2], ] - retirar[learning[1]:learning[2]])
-  curvas$passado.test <- as.matrix(base[testing[1]:testing[2], ] - retirar[testing[1]:testing[2]])
-  curvas$futuro.learn <- as.matrix(base[learning[1]:learning[2]+horizonte,maturidade] - retirar[learning[1]:learning[2]])
+  curvas$retirar.learn <- retirar[learning[1]:learning[2], drop=FALSE]
+  curvas$retirar.test <- retirar[testing[1]:testing[2], drop=FALSE]
+  curvas$passado.learn <- as.matrix(base[learning[1]:learning[2], , drop=FALSE] - retirar[learning[1]:learning[2]])
+  curvas$passado.test <- as.matrix(base[testing[1]:testing[2], , drop=FALSE] - retirar[testing[1]:testing[2]])
+  curvas$futuro.learn <- as.matrix(base[learning[1]:learning[2]+horizonte,maturidade, drop=FALSE] - retirar[learning[1]:learning[2]])
   curvas$estimacao  <- NULL
   curvas$tipo  <- "corte"
   class(curvas) <- "fdaCorte"
@@ -419,6 +419,34 @@ SemimetricasClasse <- function(curvas, ..., tipo = "pca") {
   class(semimetricas) <- "semimetricas"
   return(semimetricas)
 }
+
+
+SemimetricasClasse2 <- function(matriz.semimetrica, intervalo.passado, intervalo.futuro) {
+  ################################################################  
+  # Prepara um objeto da classe "semimetricas", para ser usado para previsão
+  # ARGS
+  #    matriz.semimetrica: uma matriz n x n com todas as semimétricas da amostra de tamanho n
+  #    intervalo.passado: vetor c(x,y), sendo x o início e y o fim
+  #                     do intervalo do treino
+  #    intervalo.futuro: vetor c(x,y), sendo x o início e y o fim
+  #                     do intervalo a ser previsto
+  # RETORNA
+  #   uma lista com duas matrizes:
+  #   semimetrica1: matriz contendo as distâncias entre cada duas curvas de treino
+  #   semimetrica2: matriz contendo as distâncias entre cada curva de teste com
+  #                           cada curva de treino
+  ################################################################  
+  horizonte <- intervalo.futuro[1] - intervalo.passado[2]
+  learning <- intervalo.passado - c(0,horizonte)
+  testing <- intervalo.futuro - horizonte
+  semimetrica1 <- matriz.semimetrica[py.range(learning),py.range(learning)]
+  semimetrica2 <- matriz.semimetrica[py.range(testing),py.range(learning)]
+  semimetricas <- list(semimetrica1,semimetrica2)
+  class(semimetricas) <- "semimetricas"
+  return(semimetricas)
+}
+
+
 
 SemimetricPCA <- function(DATA1, DATA2, q = 5){
   ###############################################################

@@ -1,6 +1,25 @@
-
-
+tmp.simulacoes <- vector("list",0)
+tmp.simulacoes[["1"]] <- list(valores.reais=rep(0,50),rw=rep(c(0,1),25),t1=rnorm(50,0,0.3),t2=rchisq(50,1,0),t3=rep(0.4,100))
+tmp.simulacoes[["2"]] <- list(valores.reais=rep(0,50),rw=rep(c(0,1),25),t1=rnorm(50,0,0.3),t2=rchisq(50,1,0),t3=rep(0.4,100))
+tab.1 <- tabela
 # Resultados gerais -------------------------------------------------------
+
+intervalo <- c(1,50)
+tabela <- TabelaEQM(tmp.simulacoes,vetor.maturidade=c(1,2),horizonte=1,subconjunto=intervalo)
+PlotarSeriesRw(tmp.simulacoes,maturidade=6,horizonte=1,subconjunto=intervalo)
+View(tabela)
+
+
+
+intervalo <- c(1,50)
+tabela <- TabelaEQM(simulacoes,vetor.maturidade,horizonte=1,subconjunto=intervalo)
+PlotarSeriesRw(simulacoes,maturidade=6,horizonte=1,subconjunto=intervalo)
+View(tabela)
+
+
+PlotarSeries(simulacoes,maturidade=3,horizonte=3,subconjunto=c(1,20))
+heatmap(tabela,scale="row", Colv=NA, Rowv=NA)
+
 
 tabelao.agrupado <- TabelaoAgrupado(simulacoes,vetor.maturidade,horizonte=5,vetor.intervalos)
 View(tabelao.agrupado); rowSums(tabelao.agrupado)
@@ -34,7 +53,4 @@ levelplot(tabelao, scale=list(x=list(rot=45)))
 summary(tabelao)
 View(tabelao)
 
-# Plot das previsões (erros médios, erros e nível
-)
-PlotarSeries(simulacoes,maturidade=4,horizonte=25,intervalo=c(1,800))
 
