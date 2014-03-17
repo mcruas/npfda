@@ -21,6 +21,13 @@ PlotarSeries(simulacoes,maturidade=3,horizonte=3,subconjunto=c(1,20))
 heatmap(tabela,scale="row", Colv=NA, Rowv=NA)
 
 
+tabela <- TabelaEQM(simulacoes,vetor.maturidade,horizonte=12)
+heatmap(tabela,scale="row", Colv=NA, Rowv=NA)
+View(tabela)
+PlotarSeries(simulacoes,maturidade=1,horizonte=3,subconjunto=c(1,20))
+
+
+
 tabelao.agrupado <- TabelaoAgrupado(simulacoes,vetor.maturidade,horizonte=5,vetor.intervalos)
 View(tabelao.agrupado); rowSums(tabelao.agrupado)
 tabelao.agrupado <- tabelao.agrupado/tabelao.agrupado[, 3]
